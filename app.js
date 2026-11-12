@@ -32,7 +32,7 @@ function lev(a, b) {
   for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
   return d[m][n];
 }
-const PROPER = new Set(['Poireau', 'Brioche']);
+const PROPER = new Set(['Poireau', 'Brioche', 'Gaspard', 'Marie', 'Rémi', 'Lefèvre']);
 function tokens(s) {
   return s.replace(/[.,!?;:«»"]/g, ' ').split(/\s+/).filter(Boolean)
     .map(w => PROPER.has(w) ? w : w.toLowerCase());

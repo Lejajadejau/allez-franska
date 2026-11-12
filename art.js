@@ -222,8 +222,37 @@ function port() {
   return s;
 }
 
+
+function ecole() {
+  const W = 360, H = 200;
+  let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">` + sky(W, H) + cloud(70, 30) + cloud(290, 36, 0.8);
+  s += house(0, 96, 64, 80) + house(296, 92, 64, 84, { plaster: '#f1dcc4' });
+  s += `<rect x="80" y="70" width="200" height="106" fill="#e9d8bb" stroke="${INK}" stroke-width="2"/><polygon points="72,70 180,30 288,70" fill="#8b6f62" stroke="${INK}" stroke-width="2"/>`;
+  s += `<circle cx="180" cy="54" r="11" fill="#fbf3e4" stroke="${INK}" stroke-width="1.6"/><path d="M180 54 v-7 M180 54 h5" stroke="${INK}" stroke-width="1.5"/>`;
+  s += `<rect x="128" y="76" width="104" height="18" rx="3" fill="#3f5a74" stroke="${INK}" stroke-width="1.6"/><text x="180" y="89" text-anchor="middle" font-size="11" fill="#f6e3b4" font-family="Fraunces,Georgia,serif" font-weight="700" letter-spacing="1.5">ÉCOLE</text>`;
+  for (let i = 0; i < 4; i++) s += `<rect x="${94 + i * 48}" y="104" width="28" height="26" fill="#cfe4ec" stroke="${INK}" stroke-width="1.5"/>`;
+  s += `<rect x="164" y="138" width="32" height="38" fill="#c8553d" stroke="${INK}" stroke-width="1.8"/>`;
+  s += `<line x1="270" y1="70" x2="270" y2="40" stroke="${INK}" stroke-width="2"/><rect x="270" y="40" width="9" height="14" fill="#3f5a74"/><rect x="279" y="40" width="9" height="14" fill="#fbf3e4"/><rect x="288" y="40" width="9" height="14" fill="#c8553d"/>`;
+  s += cobbles(176, W, 24) + `</svg>`;
+  return s;
+}
+
+function cafe() {
+  const W = 360, H = 200;
+  let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">` + sky(W, H, '#c7dde6', '#f3ecdc') + cloud(60, 28) + gull(250, 26);
+  s += house(0, 90, 70, 86, { plaster: '#f4e2c8' }) + house(290, 94, 70, 82);
+  s += `<rect x="86" y="58" width="190" height="118" fill="#f3e6cf" stroke="${INK}" stroke-width="2"/><polygon points="80,58 181,24 282,58" fill="#5f6d7e" stroke="${INK}" stroke-width="2"/>`;
+  s += `<rect x="126" y="64" width="110" height="20" rx="4" fill="#6f9a5b" stroke="${INK}" stroke-width="1.6"/><text x="181" y="79" text-anchor="middle" font-size="12" fill="#fbf3e4" font-family="Fraunces,Georgia,serif" font-weight="700" letter-spacing="2">CAFÉ</text>`;
+  for (let i = 0; i < 11; i++) s += `<rect x="${90 + i * 16.5}" y="92" width="16.5" height="16" fill="${i % 2 ? '#fbf3e4' : '#6f9a5b'}"/>`;
+  s += `<rect x="90" y="92" width="182" height="16" fill="none" stroke="${INK}" stroke-width="1.5"/>`;
+  s += `<rect x="104" y="116" width="70" height="40" fill="#cfe4ec" stroke="${INK}" stroke-width="1.6"/><rect x="196" y="116" width="34" height="60" fill="#8a5a44" stroke="${INK}" stroke-width="1.6"/>`;
+  function table(x) { return `<ellipse cx="${x}" cy="166" rx="16" ry="4" fill="#fbf3e4" stroke="${INK}" stroke-width="1.4"/><line x1="${x}" y1="168" x2="${x}" y2="188" stroke="${INK}" stroke-width="2"/><rect x="${x - 4}" y="158" width="7" height="8" rx="1" fill="#fff" stroke="${INK}" stroke-width="1"/>`; }
+  s += cobbles(176, W, 24) + table(120) + table(254) + `</svg>`;
+  return s;
+}
+
 export function scene(id) {
-  return ({ boulangerie, marche, tram: tramScene, police, port })[id]?.() || '';
+  return ({ boulangerie, marche, tram: tramScene, police, port, ecole, cafe })[id]?.() || '';
 }
 
 // Stadssilhuett till startsidan
@@ -282,6 +311,29 @@ export function character(id, mood = 'happy') {
       <path d="M26 39 q24 8 48 0" fill="#1f2f44" stroke="${INK}" stroke-width="1.6"/>
       <circle cx="50" cy="27" r="3" fill="#f2c46d"/>
       <rect x="80" y="96" width="14" height="20" rx="2" fill="#fbf3e4" stroke="${INK}" stroke-width="1.4" transform="rotate(12 87 106)"/>`;
+  } else if (id === 'lefevre') {
+    body = `
+      <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#1f2f44" stroke="${INK}" stroke-width="2"/>
+      <path d="M50 78 v54" stroke="#0f1a28" stroke-width="2"/>
+      <circle cx="50" cy="94" r="2.4" fill="#d9dde3"/><circle cx="50" cy="106" r="2.4" fill="#d9dde3"/><circle cx="50" cy="118" r="2.4" fill="#d9dde3"/>
+      <rect x="58" y="86" width="12" height="6" rx="1" fill="#d9dde3"/>
+      ${face}
+      <path d="M43 58 q7 3 14 0" fill="none" stroke="${INK}" stroke-width="1.5"/>
+      <path d="M30 40 q-2 -30 20 -34 q22 4 20 34z" fill="#1f2f44" stroke="${INK}" stroke-width="2"/>
+      <rect x="27" y="38" width="46" height="5" rx="2" fill="#0f1a28" stroke="${INK}" stroke-width="1.4"/>
+      <path d="M44 22 l6 -6 l6 6 l-6 8z" fill="#d9dde3" stroke="${INK}" stroke-width="1.2"/>
+      <circle cx="50" cy="6" r="3" fill="#d9dde3" stroke="${INK}" stroke-width="1"/>`;
+  } else if (id === 'gaspard') {
+    body = `
+      <path d="M20 132 q4 -56 30 -60 q26 4 30 60z" fill="#f2c94c" stroke="${INK}" stroke-width="2"/>
+      <path d="M50 74 v58" stroke="${INK}" stroke-width="1.6"/>
+      <circle cx="46" cy="96" r="1.8" fill="${INK}"/><circle cx="46" cy="112" r="1.8" fill="${INK}"/>
+      ${face}
+      <path d="M32 54 q0 22 18 24 q18 -2 18 -24 q-6 8 -18 8 q-12 0 -18 -8z" fill="#f3f1ea" stroke="${INK}" stroke-width="1.6"/>
+      <path d="M43 57 q7 5 14 0" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>
+      <path d="M22 40 q4 -24 28 -24 q24 0 28 24 l8 6 q-40 -6 -72 0z" fill="#f2c94c" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M84 118 l6 -40" stroke="#8a5a44" stroke-width="3"/><path d="M90 78 q8 10 2 24" fill="none" stroke="${INK}" stroke-width="1" stroke-dasharray="2 2"/>
+      <path d="M86 104 q6 -4 10 0 q-4 4 -10 0z M96 104 l3 -3 v6z" fill="#7fa6c4" stroke="${INK}" stroke-width="1"/>`;
   } else if (id === 'you') {
     body = `
       <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#f2c46d" stroke="${INK}" stroke-width="2"/>
