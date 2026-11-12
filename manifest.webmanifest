@@ -1,0 +1,17 @@
+{
+  "name": "Allez ! – franska i Port-Saint-Clément",
+  "short_name": "Allez !",
+  "description": "Lär dig franska tillsammans med familj och vänner.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fbf3e4",
+  "theme_color": "#3f5a74",
+  "lang": "sv",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
