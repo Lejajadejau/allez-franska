@@ -102,6 +102,18 @@ if ('speechSynthesis' in window) { loadVoices(); speechSynthesis.onvoiceschanged
 const AUDIO_ROOT = CONFIG.SUPABASE_URL ? CONFIG.SUPABASE_URL + '/storage/v1/object/public/audio/' : '';
 let phraseAudio = null;
 function stopAudio() { try { phraseAudio?.pause(); storyAudio?.pause(); } catch {} }
+// Lås upp ljudet vid första trycket så att iPhone tillåter automatisk uppspelning efteråt
+document.addEventListener('pointerdown', function unlockAudio() {
+  document.removeEventListener('pointerdown', unlockAudio, true);
+  if (!AUDIO_ROOT) return;
+  if (!phraseAudio) phraseAudio = new Audio();
+  if (!storyAudio) storyAudio = new Audio();
+  [phraseAudio, storyAudio].forEach(a => {
+    if (a.src) return;
+    a.muted = true; a.src = `${AUDIO_ROOT}ph/p000.mp3`;
+    try { const p = a.play(); const done = () => { if (a.muted) { a.pause(); a.muted = false; } }; if (p && p.then) p.then(done, () => { a.muted = false; }); else done(); } catch { a.muted = false; }
+  });
+}, true);
 function say(text, slow = false, opt = {}) {
   const key = String(text).replace(/\|/g, ' ').trim();
   const id = AUDIO_ROOT && PH[key];
@@ -111,11 +123,12 @@ function say(text, slow = false, opt = {}) {
     const a = phraseAudio; let done = false;
     const fin = () => { if (!done) { done = true; opt.onend?.(); } };
     const fallback = () => { if (!done) { done = true; say(text, slow, { ...opt, noRec: true }); } };
-    a.onended = fin; a.onerror = fallback;
+    a.onended = fin; a.onerror = fallback; a.muted = false;
     a.src = `${AUDIO_ROOT}ph/p${id}.mp3`;
     a.preservesPitch = true; a.webkitPreservesPitch = true;
     a.playbackRate = slow ? 0.7 : 1;
-    const p = a.play(); if (p && p.catch) p.catch(fallback);
+    // Blockerad uppspelning (t.ex. iPhone utan tryck) ska inte ge telefonens röst – tryck på 🔊 i stället
+    const p = a.play(); if (p && p.catch) p.catch(e => { if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError')) fin(); else fallback(); });
     return;
   }
   if (!('speechSynthesis' in window)) { opt.onend?.(); return; }
@@ -138,14 +151,16 @@ const DEFAULT = {
   crowns: {}, sound: true, speak: true, speakPausedUntil: 0, goalBonusDay: '', cheersSent: {},
   lessonsDone: 0, perfect: 0, updatedAt: 0, welcomed: false,
   q: null, questsDone: 0, chestDay: '', ach: {}, practiceDone: 0,
-  serial: { done: {}, lastNewDay: '' }, amb: true,
+  serial: { done: {}, lastNewDay: '' }, amb: false, ambV2: true,
 };
 let S = null, userId = 'local', sb = null, offline = false;
 const storeKey = () => 'psc_state_' + userId;
 
+// Engångsändringar av sparat tillstånd
+function migrate() { if (!S.ambV2) { S.amb = false; S.ambV2 = true; } }
 function load() {
   try { S = { ...DEFAULT, ...JSON.parse(localStorage.getItem(storeKey()) || '{}') }; } catch { S = { ...DEFAULT }; }
-  tick();
+  migrate(); tick();
 }
 let pushTimer;
 function save(sync = true) {
@@ -374,7 +389,7 @@ async function pullRemote() {
   const { data, error } = await sb.from('profiles').select('*').eq('id', userId).maybeSingle();
   if (error) { console.warn(error); return; }
   if (data && data.state && (data.state.updatedAt || 0) > (S.updatedAt || 0)) {
-    S = { ...DEFAULT, ...data.state }; tick(); save(false);
+    S = { ...DEFAULT, ...data.state }; migrate(); tick(); save(false);
   }
   if (data && !S.name) { S.name = data.name; S.avatar = data.avatar; }
 }
@@ -464,6 +479,7 @@ const OFFS = [0, 52, 78, 52, 0, -52, -78, -52];
 function renderHome() {
   const cur = currentNode();
   let html = `<section class="banner">${ART.skyline()}<div class="banner-t"><h1>Port-Saint-Clément</h1><p>Franska för familj och vänner</p></div></section>`;
+  html += nextCard(cur);
   const pct = Math.min(100, Math.round(S.dayXp / S.dailyGoal * 100));
   html += `<div class="goal card"><div><b>Dagens mål</b><span class="muted"> ${S.dayXp}/${S.dailyGoal} XP</span></div><div class="pbar"><i style="width:${pct}%"></i></div>${pct >= 100 ? '<span class="goal-ok">✓</span>' : ''}</div>`;
   html += questCard();
@@ -481,9 +497,10 @@ function renderHome() {
   }
 
   COURSE.forEach((un, u) => {
-    const unlocked = unitUnlocked(u);
-    html += `<section class="unit ${unlocked ? '' : 'locked'}" style="--uc:${un.color};--ud:${un.dark}">
-      <div class="unit-head"><div><small>Kvarter ${u + 1} · ${un.level}</small><h2>${un.fr}</h2><p>${un.sv} – ${un.desc}</p></div>
+    const unlocked = unitUnlocked(u), nDone = un.lessons.filter(le => crownsOf(le.id) >= 1).length, nAll = un.lessons.length;
+    const prog = !unlocked ? 'Låst' : nDone === nAll ? '✓ Klart' : u === curU ? `Du är här · ${nDone} av ${nAll} klara` : `${nDone} av ${nAll} klara`;
+    html += `<section class="unit ${unlocked ? '' : 'locked'} ${u === curU ? 'here' : ''}" style="--uc:${un.color};--ud:${un.dark}">
+      <div class="unit-head"><div><small>Kvarter ${u + 1} · ${un.level} · ${prog}</small><h2>${un.fr}</h2><p>${un.sv} – ${un.desc}</p></div>
       <button class="guide-b" data-guide="${u}" aria-label="Guidebok">📖</button></div>
       <div class="scene" data-scene="${un.id}">${ART.scene(un.id)}${!unlocked ? `<div class="lock-over"><span>🔒</span><button class="btn small" data-jump="${u}">Hoppa hit?</button></div>` : ''}</div>
       <div class="path">`;
@@ -526,6 +543,8 @@ function renderHome() {
   const vb = $('#verbB'); if (vb) vb.onclick = () => verbSheet();
   const sc = $('#serialB'); if (sc) sc.onclick = () => serialSheet();
   const rv = $('#reviewB'); if (rv) rv.onclick = startReview;
+  const ng = $('#nextGo'); if (ng) ng.onclick = () => ng.dataset.practice ? startPractice() : nodeSheet(cur[0], cur[1]);
+  const ns = $('#nextShow'); if (ns) ns.onclick = () => { const el = $('.node.cur'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
   watchAmbience();
   const curEl = $('.node.cur'); if (curEl && !renderHome.scrolled) { renderHome.scrolled = true; setTimeout(() => curEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 150); }
 
@@ -533,6 +552,25 @@ function renderHome() {
   else checkCheers();
   installHint();
   pushCard();
+}
+
+// Nästa steg: alltid en tydlig knapp överst på startsidan
+function nextCard(cur) {
+  if (!cur) return `<div class="nextcard card"><small>Nästa steg</small><b>Alla kvarter är klara!</b><span class="muted">Repetera för att få kronor på lektionerna.</span><button class="btn primary" id="nextGo" data-practice="1">Repetera</button></div>`;
+  const [u, l] = cur, un = COURSE[u], le = lessonAt(u, l);
+  return `<div class="nextcard card" style="--uc:${un.color}"><small>Nästa steg · Kvarter ${u + 1} av ${COURSE.length}</small>
+    <b>${esc(un.fr)} – Lektion ${l + 1} av ${un.lessons.length}</b><span class="muted">${esc(le.title)} · ${esc(le.sv)}</span>
+    <div class="nc-row"><button class="btn primary" id="nextGo">▶ Fortsätt</button><button class="btn" id="nextShow">Visa på kartan</button></div></div>`;
+}
+// Var man befinner sig, visas överst i varje övning
+function crumbText() {
+  if (!L) return '';
+  if (L.kind === 'lesson') { const un = COURSE[L.u]; return `Kvarter ${L.u + 1} · ${un.fr} › Lektion ${L.l + 1} av ${un.lessons.length}: ${lessonAt(L.u, L.l).title}`; }
+  if (L.kind === 'test') return `Hopptest till kvarter ${L.u + 1} · ${COURSE[L.u].fr}`;
+  if (L.dict) return 'Diktamen';
+  if (L.verb) return 'Verbträning';
+  if (L.review) return 'Dagens repetition';
+  return 'Övning';
 }
 
 function welcome() {
@@ -1002,7 +1040,7 @@ function startTest(u) {
   startSession({ kind: 'test', u, queue: mixedExercises([...Array(u).keys()], 12), lives: 3 });
 }
 function startSession(o) {
-  setAmbience(o.u != null ? COURSE[o.u].id : null);
+  setAmbience(null);
   L = { ...o, i: 0, done: 0, total: o.queue.length, mistakes: 0, combo: 0, maxCombo: 0, start: Date.now(), requeued: new Set(), checked: false };
   renderEx();
 }
@@ -1017,12 +1055,21 @@ function livesHtml() {
   return `<div class="lh">❤️ ${S.hearts}</div>`;
 }
 let cur = null; // aktuell övning: {ready, check()}
+// Brickor först: en mening skrivs fritt först när man har byggt den med ordbrickor en gång
+const builtKey = (ex, listen) => (listen ? 'lt:' : ex.to + ':') + ex.s.fr;
+function tilesFirst(ex) {
+  if (ex.type === 'type' && !(S.built || {})[builtKey(ex)]) return { ...mkTiles(ex.s, ex.to, sentencePool([ex.u ?? 0]), ex.u), first: true };
+  if (ex.type === 'listenType' && !ex.dict && !(S.built || {})[builtKey(ex, true)]) return { ...mkListenTiles(ex.s, sentencePool([ex.u ?? 0]), ex.u), first: true };
+  return ex;
+}
 function renderEx() {
+  L.queue[L.i] = tilesFirst(L.queue[L.i]);
   const ex = L.queue[L.i];
   L.checked = false;
   const pct = Math.round(L.done / L.total * 100);
   app.innerHTML = `<div class="lesson">
     <div class="ltop"><button class="x" id="quit" aria-label="Avsluta">✕</button><div class="pbar big"><i style="width:${pct}%"></i></div>${livesHtml()}</div>
+    <div class="crumb">${esc(crumbText())} <span>· Uppgift ${Math.min(L.done + 1, L.total)} av ${L.total}</span></div>
     ${L.combo >= 3 ? `<div class="combo">🔥 ${L.combo} i rad!</div>` : ''}
     <div class="lbody" id="lbody"></div>
     <div class="lfoot" id="lfoot"><div class="fb" id="fb"></div><button class="btn primary wide" id="check" disabled>Kontrollera</button></div>
@@ -1046,6 +1093,7 @@ function showFeedback(r) {
   const ex = L.queue[L.i];
   chime(r.ok);
   trackAnswer(ex, r.ok);
+  if (r.ok && ex.type === 'tiles') { S.built = S.built || {}; S.built[builtKey(ex, ex.listen)] = 1; }
   if (r.ok) { L.done++; L.combo++; L.maxCombo = Math.max(L.maxCombo, L.combo); }
   else {
     L.mistakes++; L.combo = 0;
@@ -1136,6 +1184,7 @@ function finish(completed) {
     } else { title = 'Pas encore…'; mood = 'sad'; extra = '<p>Testet gick inte den här gången. Försök igen när du vill!</p>'; }
   }
   let streakInfo = null;
+  if (xp > 0 && L.hints) { const cut = Math.min(5, L.hints); xp = Math.max(1, xp - cut); extra += `<p class="muted">Ledtrådar: −${cut} XP</p>`; }
   if (xp > 0) {
     addXp(xp); S.ecus += ecus;
     streakInfo = registerActivity();
@@ -1225,10 +1274,10 @@ function playLine(st, idx, onend) {
   try { phraseAudio?.pause(); } catch {}
   if (!storyAudio) storyAudio = new Audio();
   const a = storyAudio;
-  a.pause(); a.onended = fin; a.onerror = () => { if (!done) tts(); };
+  a.pause(); a.onended = fin; a.onerror = () => { if (!done) tts(); }; a.muted = false;
   a.src = url;
   const p = a.play();
-  if (p && p.catch) p.catch(() => { if (!done) tts(); });
+  if (p && p.catch) p.catch(e => { if (done) return; if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError')) fin(); else tts(); });
 }
 function storyVoice(st, who) {
   const keys = Object.keys(st.cast), k = Math.max(0, keys.indexOf(who)), c = st.cast[who];
@@ -1242,7 +1291,7 @@ function castHtml(st) {
   return ps.length === 2 ? ps.join('<span class="cast-and">&</span>') : ps.join('');
 }
 function startStoryObj(st, u, serial) {
-  setAmbience(COURSE[u].id);
+  setAmbience(null);
   L = { kind: 'story', serial, u, st, i: 0, q: null, total: st.qs.length, mistakes: 0, combo: 0, maxCombo: 0, start: Date.now(), spoke: false, showAll: !!S.storyText };
   const un = COURSE[u];
   app.innerHTML = `<div class="lesson story-player">
@@ -1411,7 +1460,7 @@ const EX = {
         <div class="listen-big"><button class="say-big" data-say="${esc(ex.s.fr)}">🔊</button><button class="say-big slow" data-slow="${esc(ex.s.fr)}">🐢</button></div>`;
       setTimeout(() => say(ex.s.fr), 300);
     } else {
-      root.innerHTML = `<p class="kind">Översätt</p><h2 class="q">${ex.to === 'fr' ? 'Skriv på franska' : 'Vad betyder det?'}</h2>
+      root.innerHTML = `<p class="kind">${ex.first ? 'Bygg med brickor – nästa gång skriver du själv' : 'Översätt'}</p><h2 class="q">${ex.to === 'fr' ? 'Bygg meningen på franska' : 'Vad betyder det?'}</h2>
         ${npc(ex.u, ex.to === 'sv' ? `${speakerBtns(ex.s.fr)}<span class="fr-t">${esc(src)}</span>` : `<span>${esc(src)}</span>`)}`;
       if (ex.to === 'sv') setTimeout(() => say(ex.s.fr), 300);
     }
@@ -1426,7 +1475,7 @@ const EX = {
     };
     $$('#bank .tile', root).forEach(b => b.onclick = () => {
       if (L.checked || b.classList.contains('used')) return;
-      chosen.push(+b.dataset.i); if (ex.to === 'fr') say(ex.tiles[+b.dataset.i]); draw();
+      chosen.push(+b.dataset.i); draw();
     });
     cur.check = () => {
       const text = chosen.map(i => ex.tiles[i]).join(' ');
@@ -1439,8 +1488,8 @@ const EX = {
     root.innerHTML = `<p class="kind">Skriv</p><h2 class="q">${toFr ? 'Skriv på franska' : 'Skriv på svenska'}</h2>
       ${npc(ex.u, toFr ? `<span>${esc(first(ex.s.sv))}</span>` : `${speakerBtns(ex.s.fr)}<span class="fr-t">${esc(ex.s.fr)}</span>`)}
       <textarea id="inp" rows="3" placeholder="${toFr ? 'Skriv på franska…' : 'Skriv på svenska…'}" autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
-      ${toFr ? accentBar() : ''}`;
-    bindSay(root); bindAccents(root);
+      ${toFr ? accentBar() : ''}${hintBar()}`;
+    bindSay(root); bindAccents(root); bindHint(root, toFr ? ex.s.fr : first(ex.s.sv));
     if (!toFr) setTimeout(() => say(ex.s.fr), 300);
     const inp = $('#inp', root); inp.oninput = () => setReady(inp.value.trim().length > 0);
     inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); onCheck(); } };
@@ -1450,8 +1499,8 @@ const EX = {
   listenType(ex, root) {
     root.innerHTML = `<p class="kind">Lyssna</p><h2 class="q">Skriv det du hör</h2>
       <div class="listen-big"><button class="say-big" data-say="${esc(ex.s.fr)}">🔊</button><button class="say-big slow" data-slow="${esc(ex.s.fr)}">🐢</button></div>
-      <textarea id="inp" rows="2" placeholder="Skriv på franska…" autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>${accentBar()}`;
-    bindSay(root); bindAccents(root); setTimeout(() => say(ex.s.fr), 300);
+      <textarea id="inp" rows="2" placeholder="Skriv på franska…" autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>${accentBar()}${hintBar()}`;
+    bindSay(root); bindAccents(root); bindHint(root, ex.s.fr); setTimeout(() => say(ex.s.fr), 300);
     const inp = $('#inp', root); inp.oninput = () => setReady(inp.value.trim().length > 0);
     inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); onCheck(); } };
     cur.check = () => {
@@ -1549,6 +1598,19 @@ const EX = {
     cur.check = () => ({ ok: sel === ex.q.a, answer: ex.q.options[ex.q.a] });
   },
 };
+// Ledtråd: första bokstaven i varje ord, sedan ett helt ord i taget
+function hintBar() { return `<div class="hint-row"><button class="hint-b" id="hintB">💡 Ledtråd</button><span class="hint-t" id="hintT"></span></div>`; }
+function bindHint(root, answer) {
+  const b = $('#hintB', root), out = $('#hintT', root); if (!b) return;
+  const words = answer.split(/\s+/); let shown = 0;
+  const draw = () => out.textContent = words.map((w, i) => i < shown ? w : w.replace(/^([«"(]*)(\p{L})(.*)$/u, (m, p, c, rest) => p + c + rest.replace(/\p{L}/gu, '_'))).join(' ');
+  b.onclick = () => {
+    if (L.checked) return;
+    if (!out.textContent) draw(); else if (shown < words.length) { shown++; draw(); }
+    L.hints = (L.hints || 0) + 1;
+    if (shown >= words.length) b.disabled = true; else b.textContent = '💡 Ett ord till';
+  };
+}
 function accentBar() { return `<div class="accents">${['é', 'è', 'ê', 'à', 'â', 'ç', 'î', 'ô', 'û', 'ù', 'ë', 'œ'].map(a => `<button data-acc="${a}">${a}</button>`).join('')}</div>`; }
 function bindAccents(root) {
   $$('[data-acc]', root).forEach(b => b.onclick = e => {
@@ -1670,7 +1732,7 @@ function watchAmbience() {
 // ================= Rollspel =================
 function startRole(u, si) {
   const st = STORIES[COURSE[u].id][si], un = COURSE[u], a = st.cast.a, b = st.cast.b;
-  setAmbience(un.id);
+  setAmbience(null);
   L = { kind: 'role', u, st, i: 0, q: null, total: st.lines.filter(l => l.w === 'b').length, mistakes: 0, combo: 0, maxCombo: 0, start: Date.now() };
   app.innerHTML = `<div class="lesson story-player role-player">
     <div class="ltop"><button class="x" id="quit" aria-label="Avsluta">✕</button><div class="pbar big"><i style="width:0%"></i></div><div class="lh">🎭</div></div>

@@ -869,11 +869,11 @@ export function townMap(units) {
     const locked = u.state === 'locked', done = u.state === 'done', cur = u.state === 'cur';
     const fill = locked ? '#c9c4bb' : u.color;
     s += `<g class="map-pin ${cur ? 'cur' : ''}" data-unit="${i}" transform="translate(${x} ${y})" style="cursor:pointer">`;
-    if (cur) s += `<circle r="17" fill="${u.color}" opacity=".25" class="map-pulse"/>`;
+    if (cur) s += `<circle r="17" fill="${u.color}" opacity=".25" class="map-pulse"/><g transform="translate(0 ${y < 50 ? 26 : -34})"><rect x="-27" y="-9" width="54" height="15" rx="7" fill="${INK}"/><text y="2" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="8" fill="#fff">Du är här</text></g>`;
     s += `<path d="M-11 -2 v-10 l11 -9 l11 9 v10 z" fill="${fill}" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`;
     s += `<rect x="-3" y="-8" width="6" height="6" fill="${locked ? '#e6e1d8' : '#fbf3e4'}" stroke="${INK}" stroke-width=".8"/>`;
-    s += `<text y="10" text-anchor="middle" font-family="Nunito,sans-serif" font-weight="900" font-size="9" fill="${INK}">${i + 1}</text>`;
-    if (done) s += `<circle cx="10" cy="-18" r="6" fill="#f2c46d" stroke="${INK}" stroke-width="1"/><text x="10" y="-15" text-anchor="middle" font-size="8">★</text>`;
+    s += `<text y="10" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="9" fill="${INK}">${i + 1}</text>`;
+    if (done) s += `<circle cx="10" cy="-18" r="6" fill="#6f9a5b" stroke="${INK}" stroke-width="1"/><text x="10" y="-15" text-anchor="middle" font-size="8" font-weight="700" fill="#fff">✓</text>`;
     if (locked) s += `<text x="10" y="-14" font-size="8">🔒</text>`;
     s += `</g>`;
   });
