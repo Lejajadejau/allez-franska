@@ -904,15 +904,67 @@ function shopfront(x, y, w, h, c) {
   s += `<rect x="${x + 4}" y="${y + 6}" width="${w - 8}" height="${h * 0.18}" rx="2" fill="${c}" stroke="${INK}" stroke-width="1"/>`;
   return s;
 }
+function walker(x, y, o = {}) {
+  return `<g class="d-walk${o.slow ? ' slow' : ''}">${person(x, y, { ...o, cls: 'd-step' })}${o.dog ? dog(x + 14, y, o.dog) : ''}</g>`;
+}
+function pigeons(x, y) {
+  const p = (dx, d) => `<g transform="translate(${x + dx} ${y})"><g class="d-peck" style="animation-delay:${d}s"><ellipse cx="0" cy="-4" rx="5" ry="3.4" fill="#9aa3ad" stroke="${INK}" stroke-width=".7"/><circle cx="5" cy="-7" r="2.4" fill="#7d8792" stroke="${INK}" stroke-width=".6"/><path d="M7 -7 l2 .6 l-2 .6" fill="#e3a33b"/></g></g>`;
+  return p(0, 0) + p(14, -.7);
+}
+function birds() {
+  return `<g class="d-fly">${gull(0, 14)}${gull(14, 8)}</g>`;
+}
+function cafeTable(x, y, c) {
+  return `<g transform="translate(${x} ${y})"><line x1="0" y1="0" x2="0" y2="-46" stroke="${INK}" stroke-width="2"/><path d="M-26 -42 q26 -18 52 0 z" fill="${c}" stroke="${INK}" stroke-width="1.5"/><path d="M-13 -42 q13 -16 26 0" fill="#fffaf0" opacity=".55"/>
+  <ellipse cx="0" cy="-14" rx="12" ry="3" fill="#f6e2c4" stroke="${INK}" stroke-width="1.2"/><line x1="0" y1="-14" x2="0" y2="0" stroke="${INK}" stroke-width="1.6"/><rect x="-3" y="-21" width="6" height="6" rx="1.5" fill="#fff" stroke="${INK}" stroke-width=".8"/><g class="a-smoke">${'<circle cx="0" cy="-26" r="2" fill="#fff"/>'}</g></g>`;
+}
+function cart(x, y, c) {
+  let s = `<g transform="translate(${x} ${y})"><line x1="-24" y1="-14" x2="-24" y2="-48" stroke="${INK}" stroke-width="1.6"/><line x1="24" y1="-14" x2="24" y2="-48" stroke="${INK}" stroke-width="1.6"/>`;
+  for (let i = 0; i < 4; i++) s += `<path d="M${-28 + i * 14} -48 h14 v7 q-7 5 -14 0 z" fill="${i % 2 ? '#fffaf0' : c}" stroke="${INK}" stroke-width="1"/>`;
+  s += `<rect x="-28" y="-26" width="56" height="14" rx="2" fill="#a8744f" stroke="${INK}" stroke-width="1.4"/>`;
+  ['#e07a8b', '#f2c46d', '#c8553d', '#7fae5e', '#b48ad6', '#e07a8b'].forEach((f, i) => { s += `<circle cx="${-22 + i * 9}" cy="-29" r="4" fill="${f}" stroke="${INK}" stroke-width=".8"/>`; });
+  s += `<circle cx="-16" cy="-6" r="6" fill="#fffaf0" stroke="${INK}" stroke-width="1.4"/><circle cx="16" cy="-6" r="6" fill="#fffaf0" stroke="${INK}" stroke-width="1.4"/></g>`;
+  return s;
+}
+function fountain(x, y) {
+  return `<g transform="translate(${x} ${y})"><ellipse cx="0" cy="-6" rx="26" ry="7" fill="#bcd8e2" stroke="${INK}" stroke-width="1.5"/><path d="M-26 -6 v5 q26 9 52 0 v-5" fill="#d8cfbf" stroke="${INK}" stroke-width="1.5"/><rect x="-3" y="-30" width="6" height="24" fill="#d8cfbf" stroke="${INK}" stroke-width="1.2"/><ellipse cx="0" cy="-30" rx="10" ry="3" fill="#d8cfbf" stroke="${INK}" stroke-width="1.2"/>
+  <g class="d-drip"><path d="M0 -34 q-10 -10 -14 14 M0 -34 q10 -10 14 14" fill="none" stroke="#7fb6d0" stroke-width="2" stroke-linecap="round"/></g></g>`;
+}
 export function decor(i, c = '#d9825b') {
-  const g = `<ellipse cx="55" cy="95" rx="46" ry="4" fill="#e8dcc4"/>`;
+  const g = `<ellipse cx="55" cy="95" rx="46" ry="4" fill="#000" opacity=".06"/>`;
   const parts = [
-    () => bush(14, 94) + shopfront(28, 42, 58, 50, c) + bush(98, 94),
-    () => lamp(40, 94) + bush(66, 94) + cat(78, 94),
-    () => tree(42, 94, 1.15) + bench(76, 94),
-    () => house(24, 50, 54, 42, { shutter: c }) + `<rect x="46" y="74" width="10" height="18" rx="2" fill="${c}" stroke="${INK}" stroke-width="1.5"/>` + bike(94, 94, c),
-    () => tree(28, 94, 0.9, '#7fae5e') + tree(70, 94, 1.05) + flowers(42, 88),
-    () => lamp(76, 94) + dog(40, 94) + bush(20, 94),
+    () => shopfront(28, 42, 58, 50, c) + walker(20, 96, { item: 'baguette' }),
+    () => lamp(30, 94) + bush(54, 94) + cat(62, 94) + pigeons(76, 95),
+    () => birds() + tree(30, 94, 1.15) + bench(72, 94) + sitter(68, 86),
+    () => house(24, 50, 54, 42, { shutter: c }) + smoke(62, 26) + `<rect x="46" y="74" width="10" height="18" rx="2" fill="${c}" stroke="${INK}" stroke-width="1.5"/>` + bike(96, 94, c),
+    () => tree(22, 94, 0.9, '#7fae5e') + tree(88, 94, 1.05) + person(56, 96, { item: 'balloon', cls: 'd-float' }),
+    () => lamp(92, 94) + walker(30, 96, { dog: '#a8784f', slow: true }),
+    () => cafeTable(40, 94, c) + sitter(68, 92) + bush(98, 94),
+    () => cart(52, 94, c) + person(88, 96, { item: 'bag' }),
+    () => fountain(54, 94) + pigeons(14, 96) + birds(),
+    () => house(18, 52, 46, 40) + laundry(64, 50, 104, 46) + walker(84, 96, { item: 'bag', slow: true }),
   ];
-  return `<svg viewBox="0 0 110 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${g}${parts[i % parts.length]()}</svg>`;
+  return `<svg viewBox="0 0 110 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" overflow="visible">${g}${parts[i % parts.length]()}</svg>`;
+}
+
+// Spårvagnslinjen korsar stigen mitt i kvarteret
+function miniTram(c) {
+  let s = `<g><path d="M44 0 l8 -12 l8 12" fill="none" stroke="${INK}" stroke-width="1.6"/>`;
+  s += `<rect x="0" y="0" width="104" height="40" rx="11" fill="#f3ead4" stroke="${INK}" stroke-width="2"/>`;
+  s += `<rect x="0" y="25" width="104" height="15" rx="7" fill="#4f7a63" stroke="${INK}" stroke-width="1.8"/>`;
+  s += `<rect x="3" y="2" width="98" height="3.5" rx="1.5" fill="#c8553d"/>`;
+  const SK = ['#f4cba6', '#c68a62', '#f1d2b6', '#8d5a3c'];
+  for (let i = 0; i < 4; i++) {
+    s += `<rect x="${8 + i * 23}" y="8" width="18" height="14" rx="4" fill="#bcd8e2" stroke="${INK}" stroke-width="1.3"/>`;
+    if (i !== 2) s += `<circle cx="${17 + i * 23}" cy="17" r="3.4" fill="${SK[i]}"/><rect x="${13 + i * 23}" y="19.5" width="8" height="2.5" fill="${pick(CLOTH, i * 3 + 1)}"/>`;
+  }
+  s += `<circle cx="20" cy="43" r="4.5" fill="${INK}"/><circle cx="84" cy="43" r="4.5" fill="${INK}"/></g>`;
+  return s;
+}
+export function tramCross(n = 0) {
+  return `<div class="tram-x" aria-hidden="true"><svg viewBox="0 0 360 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" class="tx-rails">
+    <line x1="0" y1="5" x2="360" y2="5" stroke="${INK}" stroke-width="1.2" opacity=".55"/>
+    <rect x="0" y="62" width="360" height="13" fill="#d9c8a6" opacity=".8"/>
+    <line x1="0" y1="64" x2="360" y2="64" stroke="#8b8b8b" stroke-width="2.4"/><line x1="0" y1="72" x2="360" y2="72" stroke="#8b8b8b" stroke-width="2.4"/></svg>
+    <svg viewBox="0 0 110 64" xmlns="http://www.w3.org/2000/svg" class="tx-tram" style="animation-delay:${-(n * 3.7) % 12}s"><g transform="translate(3 14)">${miniTram()}</g></svg></div>`;
 }

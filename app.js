@@ -651,11 +651,14 @@ function renderHome() {
       <button class="guide-b" data-guide="${u}" aria-label="Guidebok">📖</button></div>
       <div class="scene" data-scene="${un.id}">${ART.scene(un.id)}${!unlocked ? `<div class="lock-over"><span>🔒</span><button class="btn small" data-jump="${u}">Hoppa hit?</button></div>` : ''}</div>
       <div class="path"><svg class="road" aria-hidden="true"></svg>`;
+    let rowN = 0;
+    const deco = off => { const n = rowN++; if (n < 3) return ''; const side = off > 0 ? 'left' : off < 0 ? 'right' : n % 2 ? 'left' : 'right'; return `<div class="decor-slot"><div class="decor ${side}">${ART.decor(u * 7 + n, un.color)}</div></div>`; };
     un.lessons.forEach((le, l) => {
       const c = crownsOf(le.id), open = lessonUnlocked(u, l), isCur = cur && cur[0] === u && cur[1] === l;
       const off = OFFS[l % OFFS.length];
       const icon = lessonIcon(le);
-      if (l >= 2 && l % 2 === 0) html += `<div class="decor-slot"><div class="decor ${off > 0 ? 'left' : 'right'}">${ART.decor(u * 3 + l, un.color)}</div></div>`;
+      if (l === 3) html += ART.tramCross(u);
+      html += deco(off);
       html += `<div class="node-row" data-off="${off}" style="transform:translateX(${off}px)">
         ${isCur ? `<div class="start-tip">Börja!</div>` : ''}
         <button class="node ${open ? 'open' : 'locked'} ${c >= 1 ? 'done' : ''} ${c >= 3 ? 'gold' : ''} ${isCur ? 'cur' : ''}" data-u="${u}" data-l="${l}" aria-label="${esc(le.title)}${!open ? ' (låst)' : ''}"><span class="ic">${icon}</span>${!open ? '<span class="lk">🔒</span>' : ''}</button>
@@ -665,6 +668,7 @@ function renderHome() {
       (STORIES[un.id] || []).forEach((st, si) => {
         if (st.after !== l) return;
         const sOpen = unitUnlocked(u) && crownsOf(le.id) >= 1, sDone = (S.stories || {})[st.id];
+        html += deco(-off / 2);
         html += `<div class="node-row story-row" data-off="${-off / 2}" style="transform:translateX(${-off / 2}px)">
           <button class="node story ${sOpen ? 'open' : 'locked'} ${sDone ? 'done' : ''}" data-story="${u}:${si}" aria-label="Lyssna: ${esc(st.title)}"><span class="ic">🎧</span>${!sOpen ? '<span class="lk">🔒</span>' : ''}</button>
           <div class="story-lbl">${sDone ? '✓ ' : ''}Lyssna</div></div>`;

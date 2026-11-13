@@ -83,8 +83,14 @@ svg { display: block; width: 100%; height: auto; }
 .lock-over { position: absolute; z-index: 2; inset: 0; display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; }
 .lock-over > span { font-size: 2rem; }
 .lock-over .soon { font-size: .9rem; font-weight: 700; background: var(--paper); padding: 6px 12px; border-radius: 99px; border: 2px solid var(--line); }
-.path { position: relative; display: flex; flex-direction: column; align-items: center; padding: 22px 0 6px; gap: 14px;
-  background: radial-gradient(circle at 50% 0, color-mix(in srgb, var(--uc) 7%, transparent), transparent 70%); }
+.path { position: relative; display: flex; flex-direction: column; align-items: center; padding: 22px 0 18px; gap: 14px; margin-top: 8px;
+  border-radius: var(--r); overflow: hidden; border: 2px solid color-mix(in srgb, var(--uc) 22%, var(--line));
+  background-color: color-mix(in srgb, var(--uc) 14%, #f1e8d2);
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--uc) 22%, transparent) 1.4px, transparent 1.6px),
+    radial-gradient(ellipse 40% 18% at 12% 30%, rgba(127, 174, 94, .18), transparent 70%),
+    radial-gradient(ellipse 35% 16% at 88% 70%, rgba(127, 174, 94, .16), transparent 70%);
+  background-size: 22px 22px, 100% 100%, 100% 100%; }
+.unit.locked .path { background-color: #ebe5d8; border-color: var(--line); }
 .road { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 0; }
 .road path { fill: none; stroke-linecap: round; }
 .road .r-edge { stroke: #dccaa6; stroke-width: 34; }
@@ -93,10 +99,30 @@ svg { display: block; width: 100%; height: auto; }
 .road .r-stones2 { stroke: #e6d8bb; stroke-width: 8; stroke-dasharray: 4 12; stroke-dashoffset: 7; }
 .node-row { position: relative; display: flex; flex-direction: column; align-items: center; z-index: 1; }
 .decor-slot { position: relative; width: 100%; height: 0; margin-bottom: -14px; z-index: 0; }
-.decor { position: absolute; top: -6px; width: 104px; pointer-events: none; opacity: .92; }
+.decor { position: absolute; top: -38px; width: 116px; pointer-events: none; opacity: .92; }
 .decor svg { display: block; width: 100%; height: auto; }
 .decor.left { left: 0; } .decor.right { right: 0; }
-.unit.locked .decor { filter: grayscale(.85); opacity: .55; }
+.unit.locked .decor, .unit.locked .tram-x { filter: grayscale(.85); opacity: .55; }
+.decor { overflow: visible; }
+.decor .d-walk { animation: walk 9s ease-in-out infinite alternate; }
+.decor .d-walk.slow { animation-duration: 13s; animation-delay: -4s; }
+@keyframes walk { from { transform: translateX(-14px); } to { transform: translateX(26px); } }
+.decor .d-step { animation: step .5s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+@keyframes step { 50% { transform: translateY(-1.5px) rotate(2deg); } }
+.decor .d-float { animation: sway 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+.decor .d-peck { animation: peck 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+@keyframes peck { 0%, 60%, 100% { transform: none; } 75% { transform: rotate(22deg); } }
+.decor .d-fly { animation: dfly 14s linear infinite; }
+@keyframes dfly { from { transform: translate(-30px, 6px); } to { transform: translate(130px, -6px); } }
+.decor .d-drip { animation: blink 1.4s ease-in-out infinite; }
+.decor .a-smoke { animation: smoke 5s ease-out infinite; transform-box: fill-box; transform-origin: bottom; }
+.decor .a-leaves { animation: sway 5s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+.decor .a-flap { animation: flap 2.2s ease-in-out infinite; transform-box: fill-box; transform-origin: top; }
+.decor .a-sway { animation: sway 3.6s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+.tram-x { position: relative; width: calc(100% + 4px); height: 80px; z-index: 0; margin: -4px 0; }
+.tram-x .tx-rails { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tram-x .tx-tram { position: absolute; top: 2.5px; left: 0; width: 110px; height: 64px; animation: txride 12s linear infinite; }
+@keyframes txride { 0% { transform: translateX(-130px); } 70% { transform: translateX(calc(100vw + 20px)); } 100% { transform: translateX(calc(100vw + 20px)); } }
 
 /* Lektionsknappar: kvartersfärg, en bild per lektion och tydliga lägen */
 .node { position: relative; width: 72px; height: 66px; border-radius: 50%; color: #fff; border: 0; padding: 0;
