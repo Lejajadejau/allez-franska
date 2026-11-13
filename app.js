@@ -300,6 +300,38 @@ function practiceExercises(n) {
   }));
 }
 
+function dueItems() {
+  const today = dayKey(), srs = S.srs || {}, seen = new Set();
+  return practicePool().filter(p => { const it = srs[p.k]; return it && (it.due || today) <= today && !seen.has(p.k) && seen.add(p.k); });
+}
+function nextDueInfo() {
+  const today = dayKey(), srs = S.srs || {}; let next = null, n = 0;
+  practicePool().forEach(p => { const it = srs[p.k]; if (it && it.due > today) { if (!next || it.due < next) { next = it.due; n = 0; } if (it.due === next) n++; } });
+  return next ? { day: next, n } : null;
+}
+function reviewCard() {
+  const total = practicePool().filter((p, i, a) => a.findIndex(x => x.k === p.k) === i && (S.srs || {})[p.k]).length;
+  if (!total) return '';
+  const due = dueItems().length, nd = nextDueInfo();
+  const when = nd ? (daysBetween(dayKey(), nd.day) === 1 ? 'i morgon' : `om ${daysBetween(dayKey(), nd.day)} dagar`) : '';
+  return due
+    ? `<button class="card reviewcard hot" id="reviewB"><span class="rv-ic">🧠</span><span class="rv-t"><b>Dagens repetition</b><span class="muted small">${due} ${due === 1 ? 'ord eller mening' : 'ord och meningar'} att repetera · ca ${Math.max(1, Math.round(Math.min(due, 15) * 0.3))} min</span></span><span class="rv-n">${due}</span></button>`
+    : `<div class="card reviewcard done"><span class="rv-ic">🧠</span><span class="rv-t"><b>Repetitionen är klar ✓</b><span class="muted small">${nd ? `Nästa: ${nd.n} st ${when}.` : ''} Orden kommer tillbaka med längre mellanrum ju bättre du kan dem.</span></span></div>`;
+}
+function startReview() {
+  const due = dueItems(); if (!due.length) { toast('Inget att repetera just nu ✓'); return; }
+  const srs = S.srs || {};
+  const picked = due.sort((a, b) => (srs[a.k].b - srs[b.k].b) + (isWeak(srs[b.k]) - isWeak(srs[a.k])) || Math.random() - 0.5).slice(0, 15);
+  const units = [...new Set(doneLessons().map(x => x.u))], wpool = wordPool(units);
+  const queue = shuffle(picked.map((p, i) => {
+    if (p.w) return mkMC(p.w, wpool, i % 2 === 1);
+    const spool = sentencePool([p.u]), k = i % 4;
+    return k === 0 ? mkTiles(p.s, 'fr', spool, p.u) : k === 1 ? mkListenType(p.s, p.u) : k === 2 ? mkType(p.s, 'sv', p.u) : mkTiles(p.s, 'sv', spool, p.u);
+  }));
+  startSession({ kind: 'practice', review: true, queue });
+}
+const strength = it => !it ? 0 : it.b;
+
 // ================= Supabase =================
 async function initRemote() {
   if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) return false;
@@ -414,6 +446,7 @@ function renderHome() {
   const pct = Math.min(100, Math.round(S.dayXp / S.dailyGoal * 100));
   html += `<div class="goal card"><div><b>Dagens mål</b><span class="muted"> ${S.dayXp}/${S.dailyGoal} XP</span></div><div class="pbar"><i style="width:${pct}%"></i></div>${pct >= 100 ? '<span class="goal-ok">✓</span>' : ''}</div>`;
   html += questCard();
+  html += reviewCard();
   html += serialCard();
   const curU = cur ? cur[0] : -1;
   html += `<details class="card mapcard" ${S.mapOpen ? 'open' : ''}><summary><b>🗺️ Stadskartan</b><span class="muted small"> ${COURSE.filter((_, u) => unitDone(u)).length} av ${COURSE.length} kvarter klara</span></summary>
@@ -468,6 +501,7 @@ function renderHome() {
   const p = $('#practice'); if (p) p.onclick = startPractice;
   const lb = $('#listenB'); if (lb) lb.onclick = () => startListen();
   const sc = $('#serialB'); if (sc) sc.onclick = serialSheet;
+  const rv = $('#reviewB'); if (rv) rv.onclick = startReview;
   watchAmbience();
   const curEl = $('.node.cur'); if (curEl && !renderHome.scrolled) { renderHome.scrolled = true; setTimeout(() => curEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 150); }
 
@@ -766,7 +800,7 @@ function wordList() {
     return { un, ws };
   }).filter(g => g.ws.length);
   sheet(`<h2>Mina ord</h2>${groups.length ? groups.map(g => `<h3 class="sub">${esc(g.un.fr)}</h3>
-    <div class="wl">${g.ws.map(w => `<button class="wl-r" data-say="${esc(w.fr)}"><span>${w.e}</span><b>${esc(w.fr)}${isWeak((S.srs || {})['w:' + w.fr]) ? ' <small class="weak">svår</small>' : ''}</b><span class="muted">${esc(first(w.sv))}</span><i>🔊</i></button>`).join('')}</div>`).join('')
+    <div class="wl">${g.ws.map(w => `<button class="wl-r" data-say="${esc(w.fr)}"><span>${w.e}</span><b>${esc(w.fr)}${isWeak((S.srs || {})['w:' + w.fr]) ? ' <small class="weak">svår</small>' : ''}<small class="str">${'●'.repeat(strength((S.srs || {})['w:' + w.fr]))}${'○'.repeat(5 - strength((S.srs || {})['w:' + w.fr]))}</small></b><span class="muted">${esc(first(w.sv))}</span><i>🔊</i></button>`).join('')}</div>`).join('')
     : '<p class="muted">Klara din första lektion så samlas orden här.</p>'}
     <button class="btn primary" data-close>Stäng</button>`, w => $$('[data-say]', w).forEach(b => b.onclick = () => say(b.dataset.say)));
 }
@@ -930,7 +964,7 @@ function renderEx() {
 function setReady(r) { cur.ready = r; const b = $('#check'); if (b && !L.checked) b.disabled = !r; }
 const PRAISE = ['Très bien !', 'Parfait !', 'Bravo !', 'Super !', 'Excellent !', 'Magnifique !'];
 function onCheck() {
-  if (!L || L.over || L.kind === 'story') return;
+  if (!L || L.over || L.kind === 'story' || L.kind === 'role') return;
   if (L.checked) { next(); return; }
   if (!cur.ready) return;
   const r = cur.check();
@@ -1009,8 +1043,15 @@ function finish(completed) {
     title = 'Histoire terminée !';
     if (L.mistakes === 0 && L.total) extra = '<p class="unlock">🎧 Du förstod allt!</p>';
   } else if (L.kind === 'practice') {
-    xp = 5; ecus = 2; if (S.hearts < HEART_MAX) { S.hearts++; extra = '<p class="unlock">❤️ Du fick tillbaka ett hjärta!</p>'; }
-    title = 'Bien joué !';
+    xp = L.review ? 10 : 5; ecus = L.review ? 5 : 2; if (S.hearts < HEART_MAX) { S.hearts++; extra = '<p class="unlock">❤️ Du fick tillbaka ett hjärta!</p>'; }
+    title = L.review ? 'Révision terminée !' : 'Bien joué !';
+    if (L.review) { const left = dueItems().length; extra += left ? `<p class="muted">${left} kvar att repetera i dag.</p>` : '<p class="unlock">🧠 Allt repeterat för i dag!</p>'; }
+  } else if (L.kind === 'role') {
+    char = COURSE[L.u].character;
+    S.roles = S.roles || {}; const first = !S.roles[L.st.id]; S.roles[L.st.id] = true;
+    xp = 10 + (L.mistakes === 0 ? 5 : 0); ecus = first ? 10 : 3;
+    title = 'Bravo, quel acteur !';
+    extra = L.mistakes === 0 ? '<p class="unlock">🎭 Alla repliker rätt!</p>' : `<p class="muted">${L.total - L.mistakes} av ${L.total} repliker rätt på första försöket.</p>`;
   } else if (L.kind === 'test') {
     if (completed && L.lives >= 0) {
       for (let u = 0; u < L.u; u++) COURSE[u].lessons.forEach(le => { if (!crownsOf(le.id)) S.crowns[le.id] = 1; });
@@ -1024,7 +1065,7 @@ function finish(completed) {
     streakInfo = registerActivity();
     if (S.dayXp >= S.dailyGoal && S.goalBonusDay !== S.dayKey) { S.goalBonusDay = S.dayKey; S.ecus += 10; extra += '<p class="unlock">🎯 Dagens mål klart! +10 🪙</p>'; }
     if (L.kind === 'practice') S.practiceDone = (S.practiceDone || 0) + 1;
-    extra += progressQuests({ kind: L.kind, perfect: L.mistakes === 0, combo: L.maxCombo });
+    extra += progressQuests({ kind: L.kind === 'role' ? 'story' : L.kind, perfect: L.mistakes === 0, combo: L.maxCombo });
     extra += checkAchievements();
   }
   save();
@@ -1084,8 +1125,10 @@ function storySheet(u, si) {
   sheet(`<div class="ns-head" style="--uc:${un.color}"><small>${un.fr} · Lyssna</small><h2>${esc(st.title)}</h2><p>${esc(st.sv)}</p></div>
     <p>Lyssna på samtalet mellan <b>${esc(st.cast.a.name)}</b> och <b>${esc(st.cast.b.name)}</b> och svara på frågorna under tiden.</p>
     <p class="muted small">Tips: lyssna först – visa texten bara om du behöver. ${un.level === 'A1' ? 'Texten dyker upp när repliken är uppläst.' : 'Tryck på en replik för att se texten.'}</p>
-    <button class="btn primary" id="go">${done ? 'Lyssna igen +10 XP' : 'Starta +10 XP'}</button><button class="btn ghost" data-close>Stäng</button>`,
-    (w, close) => $('#go', w).onclick = () => { close(); startStory(u, si); });
+    <button class="btn primary" id="go">${done ? 'Lyssna igen +10 XP' : 'Starta +10 XP'}</button>
+    ${done ? `<button class="btn role-b" id="role">🎭 Spela rollen som ${esc(st.cast.b.name)}${(S.roles || {})[st.id] ? ' ✓' : ''}</button><p class="muted small center">Du svarar själv – välj repliken eller säg den högt.</p>` : '<p class="muted small center">🎭 När du har lyssnat kan du spela rollen själv.</p>'}
+    <button class="btn ghost" data-close>Stäng</button>`,
+    (w, close) => { $('#go', w).onclick = () => { close(); startStory(u, si); }; const r = $('#role', w); if (r) r.onclick = () => { close(); startRole(u, si); }; });
 }
 // Inspelade röster (ElevenLabs) – TTS som reserv
 const AUDIO_BASE = AUDIO_ROOT ? AUDIO_ROOT + 'stories/' : '';
@@ -1407,7 +1450,7 @@ function bindAccents(root) {
   });
 }
 document.addEventListener('keydown', e => {
-  if (!L || !$('.lesson') || L.kind === 'story') return;
+  if (!L || !$('.lesson') || L.kind === 'story' || L.kind === 'role') return;
   if (e.key === 'Enter' && document.activeElement?.tagName !== 'TEXTAREA') { e.preventDefault(); onCheck(); }
   if (/^[1-4]$/.test(e.key) && document.activeElement?.tagName !== 'TEXTAREA') { const o = $$('.opt, .pcard')[+e.key - 1]; o?.click(); }
 });
@@ -1508,14 +1551,101 @@ function watchAmbience() {
   $$('.unit:not(.locked):not(.future) .scene[data-scene]').forEach(el => ambIO.observe(el));
 }
 
+// ================= Rollspel =================
+function startRole(u, si) {
+  const st = STORIES[COURSE[u].id][si], un = COURSE[u], a = st.cast.a, b = st.cast.b;
+  setAmbience(un.id);
+  L = { kind: 'role', u, st, i: 0, q: null, total: st.lines.filter(l => l.w === 'b').length, mistakes: 0, combo: 0, maxCombo: 0, start: Date.now() };
+  app.innerHTML = `<div class="lesson story-player role-player">
+    <div class="ltop"><button class="x" id="quit" aria-label="Avsluta">✕</button><div class="pbar big"><i style="width:0%"></i></div><div class="lh">🎭</div></div>
+    <div class="lbody">
+      <p class="kind">Rollspel · ${esc(un.fr)}</p><h2 class="q">${esc(st.title)}</h2>
+      <p class="muted small">Du är <b>${esc(b.name)}</b> och pratar med ${esc(a.name)}. När det är din tur väljer du repliken – eller säger den högt.</p>
+      <div class="sdlg" id="sdlg"></div><div id="sq"></div>
+    </div>
+    <div class="lfoot" id="lfoot"><button class="btn primary wide" id="snext">▶ Börja</button></div></div>`;
+  $('#quit').onclick = quitLesson;
+  $('#snext').onclick = () => { $('#lfoot').style.display = 'none'; roleNext(); };
+  preloadLine(st, 0);
+}
+function roleRow(st, idx, mine) {
+  const ln = st.lines[idx], c = st.cast[ln.w];
+  const row = document.createElement('div'); row.className = `dl ${mine ? 'you' : 'npc'} in`;
+  row.innerHTML = `${mine ? '' : `<div class="dl-av">${ART.character(c.char)}</div>`}
+    <button class="dl-b sline"><span class="spk">${esc(mine ? 'Du' : c.name)}</span><span class="fr-t">${esc(ln.fr)}</span><span class="dl-sv">${esc(ln.sv)}</span></button>
+    ${mine ? `<div class="b-av ${c.g}">${esc((S.avatar || c.name[0]))}</div>` : ''}`;
+  $('#sdlg').appendChild(row); row.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  const btn = row.querySelector('.sline'); btn.onclick = () => { btn.classList.toggle('tr'); playLine(st, idx); };
+}
+function roleNext() {
+  const st = L?.st; if (!st || L.kind !== 'role') return;
+  $('.ltop .pbar i').style.width = Math.round(L.i / st.lines.length * 100) + '%';
+  if (L.i >= st.lines.length) { setTimeout(() => L?.kind === 'role' && finish(true), 600); return; }
+  const idx = L.i++, ln = st.lines[idx];
+  preloadLine(st, idx + 1);
+  if (ln.w === 'a') { roleRow(st, idx, false); playLine(st, idx, () => setTimeout(() => L?.st === st && roleNext(), 350)); }
+  else rolePrompt(idx);
+}
+function roleChoices(st, idx) {
+  const ans = st.lines[idx].fr;
+  const own = st.lines.filter((l, j) => l.w === 'b' && j !== idx).map(l => l.fr);
+  const more = (STORIES[COURSE[L.u].id] || []).filter(x => x !== st).flatMap(x => x.lines.filter(l => l.w === 'b').map(l => l.fr));
+  const pool = [...new Set([...shuffle(own), ...shuffle(more)])].filter(t => t !== ans);
+  return shuffle([ans, ...pool.slice(0, 2)]);
+}
+function rolePrompt(idx) {
+  const st = L.st, ln = st.lines[idx], opts = roleChoices(st, idx);
+  let tries = 0;
+  const box = $('#sq');
+  box.innerHTML = `<div class="sq card role-q"><p class="kind">Din tur</p><h3>Säg på franska: <span class="sv-q">”${esc(first(ln.sv))}”</span></h3>
+    <div class="opts">${opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="num">${i + 1}</span>${esc(o)}</button>`).join('')}</div>
+    ${canSpeak() ? `<button class="mic sm" id="rmic">🎙️<span>Säg den högt i stället</span></button><p class="heard muted" id="heard"></p>` : ''}
+    <div class="sq-fb"></div></div>`;
+  box.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  const done = ok => {
+    if (L.q === 'done') return; L.q = 'done';
+    chime(ok);
+    if (ok && tries === 0) { L.combo++; L.maxCombo = Math.max(L.maxCombo, L.combo); } else { L.mistakes++; L.combo = 0; }
+    trackAnswer({ s: ln }, ok && tries === 0);
+    setTimeout(() => { box.innerHTML = ''; roleRow(st, idx, true); L.q = null; playLine(st, idx, () => setTimeout(() => L?.st === st && roleNext(), 350)); }, ok ? 450 : 1300);
+  };
+  L.q = 'open';
+  $$('.opt', box).forEach(b => b.onclick = () => {
+    if (L.q !== 'open') return;
+    const ok = opts[+b.dataset.i] === ln.fr;
+    b.classList.add(ok ? 'right' : 'wrongo');
+    if (!ok) { $$('.opt', box).find(x => opts[+x.dataset.i] === ln.fr).classList.add('right'); $('.sq-fb', box).innerHTML = `<b class="badc">Rätt replik är markerad.</b>`; tries++; }
+    else $('.sq-fb', box).innerHTML = `<b class="okc">✓ ${rnd(PRAISE)}</b>`;
+    done(ok);
+  });
+  const mic = $('#rmic', box);
+  if (mic) mic.onclick = () => {
+    if (L.q !== 'open') return;
+    try {
+      const rec = new SR(); rec.lang = 'fr-FR'; rec.maxAlternatives = 3; mic.classList.add('rec');
+      const target = norm(ln.fr, false).split(' ');
+      rec.onresult = e => {
+        const alts = [...e.results[0]].map(a => a.transcript);
+        const best = Math.max(...alts.map(t => { const s2 = new Set(norm(t, false).split(' ')); return target.filter(w => s2.has(w)).length / target.length; }));
+        if (best >= 0.6) { $('#heard', box).innerHTML = `<b class="okc">✓ ${rnd(PRAISE)}</b> Jag hörde: ”${esc(alts[0])}”`; done(true); }
+        else { tries++; $('#heard', box).innerHTML = `Nästan! Jag hörde: ”${esc(alts[0])}” – försök igen eller välj repliken.`; }
+      };
+      rec.onerror = () => { $('#heard', box).textContent = 'Mikrofonen fungerade inte – välj repliken i stället.'; };
+      rec.onend = () => mic.classList.remove('rec');
+      rec.start();
+    } catch { $('#heard', box).textContent = 'Mikrofonen fungerade inte – välj repliken i stället.'; }
+  };
+}
+
 // ================= Lyssna fritt (handsfree) =================
 let LM = null, wakeLock = null;
 function listenItems(units) {
-  const seen = new Set(), out = [];
-  doneLessons().filter(x => !units || units.includes(x.u)).forEach(({ u, le }) => {
+  const seen = new Set(), out = [], weak = units === 'weak', srs = S.srs || {}, today = dayKey();
+  const hard = it => { const x = srs['w:' + it.fr] || srs['s:' + it.fr]; return x && (isWeak(x) || (x.due || today) <= today); };
+  doneLessons().filter(x => weak || !units || units.includes(x.u)).forEach(({ u, le }) => {
     [...le.words, ...le.sentences].forEach(it => {
       const fr = String(it.fr).replace(/\|/g, ' ').trim();
-      if (seen.has(fr) || (AUDIO_ROOT && !PH[fr])) return;
+      if (seen.has(fr) || (AUDIO_ROOT && !PH[fr]) || (weak && !hard(it))) return;
       seen.add(fr); out.push({ u, fr, sv: String(it.sv).split('|')[0], e: it.e || '' });
     });
   });
@@ -1571,7 +1701,7 @@ function renderListen() {
     <div class="ltop"><button class="x" id="lquit" aria-label="Stäng">✕</button><div class="pbar big"><i id="lpb" style="width:0%"></i></div><div class="lh">🎧</div></div>
     <div class="lbody">
       <p class="kind">Lyssna fritt</p>
-      <div class="chips lchips"><button class="chip ${!LM.units ? 'on' : ''}" data-lu="all">Alla kvarter</button>${us.map(u => `<button class="chip ${LM.units?.[0] === u ? 'on' : ''}" data-lu="${u}">${esc(COURSE[u].fr)}</button>`).join('')}</div>
+      <div class="chips lchips"><button class="chip ${!LM.units ? 'on' : ''}" data-lu="all">Alla kvarter</button>${listenItems('weak').length ? `<button class="chip ${LM.units === 'weak' ? 'on' : ''}" data-lu="weak">🧠 Att repetera (${listenItems('weak').length})</button>` : ''}${us.map(u => `<button class="chip ${Array.isArray(LM.units) && LM.units[0] === u ? 'on' : ''}" data-lu="${u}">${esc(COURSE[u].fr)}</button>`).join('')}</div>
       <div class="lcard card"><div class="l-e" id="le">🎧</div><div class="l-fr" id="lfr">Tryck på ▶ för att börja</div><div class="l-sv" id="lsv"></div><div class="l-step" id="lstep"></div></div>
       <p class="muted small center">Franska – paus för att tänka – svenska – franska igen. ${LM.items.length} ord och meningar från dina lektioner.</p>
       ${isIOS ? '<p class="muted small center">På iPhone kan ljudet stanna om skärmen låses. Appen försöker hålla skärmen tänd medan den spelar.</p>' : ''}
@@ -1588,7 +1718,7 @@ function renderListen() {
   $('#lprev').onclick = () => lmJump(-1);
   $('#ltempo').onclick = () => { LM.slow = !LM.slow; S.listenSlow = LM.slow; save(false); $('#ltempo').textContent = LM.slow ? '🐢 Lugnt' : '🚶 Normalt'; };
   $$('[data-lu]').forEach(b => b.onclick = () => {
-    LM.units = b.dataset.lu === 'all' ? null : [+b.dataset.lu];
+    LM.units = b.dataset.lu === 'all' ? null : b.dataset.lu === 'weak' ? 'weak' : [+b.dataset.lu];
     LM.items = shuffle(listenItems(LM.units)); LM.i = 0;
     $$('[data-lu]').forEach(x => x.classList.toggle('on', x === b));
     if (LM.playing) { lmStop(); listenLoop(); } else showListen(LM.items[0], 'idle');

@@ -1,5 +1,5 @@
 // Service worker: gör att appen startar snabbt och fungerar offline.
-const CACHE = 'allez-v14';
+const CACHE = 'allez-v15';
 const AUDIO_CACHE = 'allez-audio'; // sparat ljud överlever appuppdateringar
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'content.js', 'art.js', 'stories.js', 'stories2.js', 'serial.js', 'svmap.js', 'units2.js', 'audiomap.js', 'config.js', 'manifest.webmanifest', 'icons/icon-192.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });

@@ -446,3 +446,16 @@ body[data-tod="night"] .scene svg .lamp-glow { filter: blur(2px); }
 .lc { width: 54px; height: 54px; border-radius: 50%; border: 2px solid var(--line); background: #fff; font-size: 1.3rem; box-shadow: 0 3px 0 var(--line); }
 .lc.play { width: 72px; height: 72px; background: var(--blue); color: #fff; border-color: var(--blue-d); box-shadow: 0 4px 0 var(--blue-d); font-size: 1.7rem; }
 .lc.tempo { width: auto; border-radius: 99px; padding: 0 14px; font-size: .85rem; font-weight: 800; }
+
+/* Repetition */
+.reviewcard { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; margin-bottom: 12px; }
+.reviewcard.hot { background: #f4ecdb; border-color: var(--butter-d); box-shadow: 0 4px 0 var(--butter-d); }
+.reviewcard.done { opacity: .85; }
+.rv-ic { font-size: 1.9rem; flex: none; }
+.rv-t { flex: 1; } .rv-t b { display: block; font-family: 'Fraunces', Georgia, serif; font-size: 1.1rem; }
+.rv-n { background: var(--red); color: #fff; font-weight: 900; border-radius: 99px; min-width: 32px; height: 32px; display: grid; place-items: center; padding: 0 8px; }
+.wl-r .str { display: block; font-family: system-ui; font-size: .62rem; letter-spacing: 1px; color: var(--butter-d); font-weight: 400; }
+/* Rollspel */
+.role-b { background: #f4ecdb; border-color: var(--butter-d); box-shadow: 0 4px 0 var(--butter-d); }
+.role-q h3 { font-size: 1.05rem; } .sv-q { font-family: 'Fraunces', Georgia, serif; color: var(--blue); }
+.mic.sm { margin-top: 10px; padding: 8px 14px; font-size: .9rem; }
