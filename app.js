@@ -4,6 +4,7 @@ import * as ART from './art.js';
 import { STORIES } from './stories.js';
 import { PH } from './audiomap.js';
 import { SERIAL } from './serial.js';
+import { SV } from './svmap.js';
 
 // ================= Hjälpfunktioner =================
 const $ = (s, r = document) => r.querySelector(s);
@@ -723,6 +724,7 @@ function allAudioUrls(units) {
     (STORIES[un.id] || []).forEach(st => st.lines.forEach((_, i) => urls.add(lineUrl(st, i))));
     SERIAL.eps.filter(ep => ep.u === u).forEach(st => st.lines.forEach((_, i) => urls.add(lineUrl(st, i))));
     urls.add(ambUrl(un.id));
+    un.lessons.forEach(l => [...l.words, ...l.sentences].forEach(x => { const u2 = svUrl(String(x.sv).split('|')[0]); if (u2) urls.add(u2); }));
   });
   return [...urls];
 }
@@ -1520,7 +1522,22 @@ function listenItems(units) {
   return out;
 }
 function svVoice() { try { return speechSynthesis.getVoices().find(v => /^sv/i.test(v.lang)) || null; } catch { return null; } }
+const svUrl = text => { const n = AUDIO_ROOT && SV[String(text).trim()]; return n != null && n !== '' ? `${AUDIO_ROOT}sv/s${String(n).padStart(3, '0')}.mp3` : ''; };
 function saySv(text, onend) {
+  const url = svUrl(text);
+  if (url) {
+    stopAudio(); if ('speechSynthesis' in window) speechSynthesis.cancel();
+    if (!phraseAudio) phraseAudio = new Audio();
+    const a = phraseAudio; let done = false;
+    const fin = () => { if (!done) { done = true; onend(); } };
+    a.onended = fin; a.onerror = () => { if (!done) { done = true; saySvTts(text, onend); } };
+    a.src = url; a.playbackRate = 1;
+    const p = a.play(); if (p && p.catch) p.catch(() => { if (!done) { done = true; saySvTts(text, onend); } });
+    return;
+  }
+  saySvTts(text, onend);
+}
+function saySvTts(text, onend) {
   if (!('speechSynthesis' in window)) { setTimeout(onend, 1800); return; }
   const vs = speechSynthesis.getVoices(), v = svVoice();
   if (vs.length && !v) { setTimeout(onend, 1800); return; } // ingen svensk röst: visa bara texten
