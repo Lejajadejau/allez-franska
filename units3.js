@@ -236,7 +236,7 @@ export const MORE2 = [
 
   {
     id: 'noel', fr: 'Le Marché de Noël', sv: 'Julmarknaden', level: 'C1', color: '#2f6b4f', dark: '#1e4a36',
-    desc: 'Varm choklad, julklappar och önskningar – avsluta resan i julbelysningen hos Monsieur Nicolas.',
+    desc: 'Varm choklad, julklappar och önskningar i julbelysningen hos Monsieur Nicolas.',
     character: 'nicolas', charName: 'Monsieur Nicolas',
     welcome: "Joyeux Noël ! Approchez, approchez : marrons chauds, chocolat et décorations faites main !",
     tips: [

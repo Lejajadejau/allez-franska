@@ -3,6 +3,7 @@
 // Meningar: fr, sv (alternativ med |), alt = andra godtagbara franska svar
 import { MORE } from './units2.js';
 import { MORE2 } from './units3.js';
+import { MORE3 } from './units4.js';
 
 export const COURSE = [
   {
@@ -949,7 +950,7 @@ export const COURSE = [
     ],
   },
 ];
-COURSE.push(...MORE, ...MORE2);
+COURSE.push(...MORE, ...MORE2, ...MORE3);
 
 // Kvarter som visas på kartan men inte är byggda än
 export const FUTURE = [];

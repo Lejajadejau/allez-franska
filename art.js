@@ -160,6 +160,8 @@ const EXTRA = {
   vignoble: { back: '', front: () => person(96, 196, { item: 'bag', top: '#6f9a5b' }) + person(250, 194, { s: .8, item: 'arms', top: '#e3a33b' }) + person(300, 196, { dress: 1, top: '#7a3e6b' }) + dog(330, 197, '#c49a6c') + flyingGulls() },
   tribunal: { back: '', front: () => person(70, 198, { top: '#22252f', item: 'bag' }) + person(96, 199, { dress: 1, top: '#4a4f63' }) + person(268, 198, { hat: '#1f2f44', top: '#1f2f44' }) + person(294, 199, { item: 'arms' }) + bench(330, 198) + tree(20, 184, .8) },
   noel: { back: '', front: () => '' },
+  maison: { back: '', front: () => person(40, 198, { item: 'bag', top: '#5f7fa0' }) + person(318, 197, { s: .8, item: 'arms', top: '#e3a33b' }) + dog(340, 198, '#8a5a44') + tree(352, 186, .8) },
+  magasin: { back: '', front: () => person(36, 198, { item: 'bag', top: '#c8553d' }) + person(62, 199, { dress: 1, top: '#7a3e6b', item: 'bag' }) + person(300, 198, { hat: '#2a3d52', top: '#3f6f8f' }) + person(326, 199, { s: .8, item: 'balloon' }) + flyingGulls() },
 };
 
 // ---------- Scener ----------
@@ -549,6 +551,44 @@ function noel() {
   return s + `</svg>`;
 }
 
+function maison() {
+  let s = svgOpen('#bcd7e8', '#f3e9cf') + cloud(60, 28) + cloud(300, 22, 0.8);
+  s += house(0, 96, 60, 80) + house(300, 100, 60, 76);
+  s += `<rect x="0" y="176" width="360" height="24" fill="#c9d79a" stroke="${INK}" stroke-width="1.4"/>`;
+  // huset från 1927
+  s += `<rect x="96" y="82" width="168" height="94" fill="#f1dcc4" stroke="${INK}" stroke-width="2"/>`;
+  s += `<polygon points="88,82 180,30 272,82" fill="#a8603f" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`;
+  s += `<rect x="168" y="44" width="24" height="20" fill="#cfe4ec" stroke="${INK}" stroke-width="1.6"/><path d="M180 44 v20 M168 54 h24" stroke="${INK}" stroke-width="1"/>`;
+  [[112, 96], [150, 96], [212, 96], [112, 134], [212, 134]].forEach(([x, y]) => s += `<rect x="${x}" y="${y}" width="28" height="26" fill="#cfe4ec" stroke="${INK}" stroke-width="1.6"/><rect x="${x - 6}" y="${y}" width="6" height="26" fill="#6f9a5b" stroke="${INK}" stroke-width="1"/><rect x="${x + 28}" y="${y}" width="6" height="26" fill="#6f9a5b" stroke="${INK}" stroke-width="1"/>`);
+  s += `<path d="M162 176 v-34 q14 -10 28 0 v34z" fill="#b5653a" stroke="${INK}" stroke-width="1.6"/><circle cx="184" cy="160" r="1.8" fill="${INK}"/>`;
+  s += `<text x="180" y="138" text-anchor="middle" font-size="8" font-family="Fraunces,Georgia,serif" font-weight="700" fill="#7a5240">1927</text>`;
+  // byggnadsställning och stege
+  s += `<g stroke="#7a7f88" stroke-width="2.2" fill="none"><path d="M240 176 V70 M268 176 V70 M236 126 H272 M236 90 H272"/></g><rect x="236" y="86" width="36" height="5" fill="#c9a26a" stroke="${INK}" stroke-width="1"/><rect x="236" y="122" width="36" height="5" fill="#c9a26a" stroke="${INK}" stroke-width="1"/>`;
+  s += `<g stroke="#a8744f" stroke-width="2.4"><path d="M78 176 L98 92 M90 176 L110 92"/>${[0, 1, 2, 3, 4, 5].map(k => `<path d="M${80 + k * 3.4} ${166 - k * 14} h12"/>`).join('')}</g>`;
+  s += `<g transform="translate(128 176)"><rect x="-8" y="-12" width="16" height="12" rx="2" fill="#f6e3b4" stroke="${INK}" stroke-width="1.3"/><path d="M-8 -9 h16" stroke="#e3a33b" stroke-width="3"/></g>`;
+  s += `<g transform="translate(150 176)"><rect x="-7" y="-10" width="14" height="10" rx="2" fill="#fbfbf7" stroke="${INK}" stroke-width="1.3"/><path d="M-7 -7 h14" stroke="#5f7fa0" stroke-width="3"/></g>`;
+  s += `<g transform="translate(206 176)"><rect x="-12" y="-16" width="24" height="16" fill="#c9a26a" stroke="${INK}" stroke-width="1.3"/><path d="M-12 -10 h24" stroke="${INK}" stroke-width=".8"/></g>`;
+  return s + `</svg>`;
+}
+
+function magasin() {
+  let s = svgOpen('#c4d9ea', '#ece7dc') + cloud(70, 24, 0.9);
+  s += `<rect x="20" y="40" width="320" height="136" fill="#efe6d4" stroke="${INK}" stroke-width="2"/>`;
+  s += `<rect x="14" y="30" width="332" height="14" fill="#3f6f8f" stroke="${INK}" stroke-width="2"/>`;
+  s += `<rect x="96" y="50" width="168" height="22" rx="3" fill="#2a5068" stroke="${INK}" stroke-width="1.6"/><text x="180" y="65.5" text-anchor="middle" font-size="11" font-family="Fraunces,Georgia,serif" font-weight="700" fill="#f6e3b4" letter-spacing="1.5">GALERIES DU PORT</text>`;
+  [40, 88, 136, 184, 232, 280].forEach(x => s += `<rect x="${x}" y="80" width="40" height="26" fill="#cfe4ec" stroke="${INK}" stroke-width="1.4"/><path d="M${x} 80 l20 -6 l20 6" fill="#c8553d" stroke="${INK}" stroke-width="1"/>`);
+  // skyltfönster med skyltdockor
+  const win = (x, c1, c2) => `<rect x="${x}" y="116" width="96" height="60" fill="#dfeef5" stroke="${INK}" stroke-width="2"/>
+    <g transform="translate(${x + 30} 172)"><path d="M-8 -36 h16 l4 30 h-24z" fill="${c1}" stroke="${INK}" stroke-width="1.2"/><circle cx="0" cy="-42" r="6" fill="#fbfbf7" stroke="${INK}" stroke-width="1.2"/><path d="M0 -6 v6 M-6 0 h12" stroke="${INK}" stroke-width="1.4"/></g>
+    <g transform="translate(${x + 66} 172)"><rect x="-9" y="-36" width="18" height="22" rx="3" fill="${c2}" stroke="${INK}" stroke-width="1.2"/><rect x="-7" y="-14" width="14" height="10" fill="#3f5a74" stroke="${INK}" stroke-width="1.2"/><circle cx="0" cy="-42" r="6" fill="#fbfbf7" stroke="${INK}" stroke-width="1.2"/><path d="M0 -4 v4 M-6 0 h12" stroke="${INK}" stroke-width="1.4"/></g>`;
+  s += win(28, '#c8553d', '#e3a33b') + win(236, '#7a3e6b', '#6f9a5b');
+  s += `<rect x="148" y="116" width="64" height="60" fill="#3f5a74" stroke="${INK}" stroke-width="2"/><path d="M180 116 v60" stroke="#cfe4ec" stroke-width="2"/><rect x="152" y="120" width="24" height="52" fill="#cfe4ec" opacity=".5"/><rect x="184" y="120" width="24" height="52" fill="#cfe4ec" opacity=".5"/>`;
+  s += `<g transform="translate(60 128)"><rect x="-20" y="-8" width="40" height="14" rx="3" fill="#c8553d" stroke="${INK}" stroke-width="1.2"/><text x="0" y="3" text-anchor="middle" font-size="8" font-family="Nunito,sans-serif" font-weight="900" fill="#fff">SOLDES</text></g>`;
+  s += `<g transform="translate(300 128)"><rect x="-16" y="-8" width="32" height="14" rx="3" fill="#f2c46d" stroke="${INK}" stroke-width="1.2"/><text x="0" y="3" text-anchor="middle" font-size="8" font-family="Nunito,sans-serif" font-weight="900" fill="#7a3a1a">-40 %</text></g>`;
+  s += cobbles(176, 360, 24);
+  return s + `</svg>`;
+}
+
 function enrich(id, svg) {
   const e = EXTRA[id]; if (!svg || !e) return svg;
   if (e.back) { const i = svg.indexOf('/>', svg.indexOf('fill="url(#sky')); if (i > 0) svg = svg.slice(0, i + 2) + e.back + svg.slice(i + 2); }
@@ -556,7 +596,7 @@ function enrich(id, svg) {
   return svg.slice(0, j) + f + svg.slice(j);
 }
 export function scene(id) {
-  return enrich(id, ({ boulangerie, marche, tram: tramScene, police, port, ecole, cafe, gare, medecin, hotel, poste, plage, anniversaire, mairie, festival, vignoble, tribunal, noel })[id]?.() || '');
+  return enrich(id, ({ boulangerie, marche, tram: tramScene, police, port, ecole, cafe, gare, medecin, hotel, poste, plage, anniversaire, mairie, festival, vignoble, tribunal, noel, maison, magasin })[id]?.() || '');
 }
 
 // Stadssilhuett till startsidan
@@ -769,6 +809,26 @@ export function character(id, mood = 'happy') {
       <path d="M26 40 q4 -26 30 -24 q18 2 24 18 l8 14 q-30 -10 -62 -8z" fill="#c8553d" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
       <rect x="24" y="36" width="54" height="8" rx="4" fill="#f3efe6" stroke="${INK}" stroke-width="1.6"/><circle cx="88" cy="50" r="6" fill="#f3efe6" stroke="${INK}" stroke-width="1.6"/>
       <g transform="translate(80 104)"><path d="M-12 -6 l12 22 l12 -22z" fill="#c9a26a" stroke="${INK}" stroke-width="1.4"/><circle cx="-5" cy="-8" r="4" fill="#7a4a2a" stroke="${INK}" stroke-width="1"/><circle cx="3" cy="-9" r="4" fill="#8a5a3a" stroke="${INK}" stroke-width="1"/><circle cx="-1" cy="-13" r="4" fill="#6b3f22" stroke="${INK}" stroke-width="1"/></g>`;
+  } else if (id === 'leroy') {
+    body = `
+      <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#e8dcc0" stroke="${INK}" stroke-width="2"/>
+      <path d="M34 132 v-46 h32 v46z" fill="#5f7fa0" stroke="${INK}" stroke-width="1.8"/><path d="M36 86 l-4 -12 M64 86 l4 -12" stroke="#5f7fa0" stroke-width="5" stroke-linecap="round"/>
+      <rect x="44" y="96" width="12" height="9" rx="2" fill="#4c6a88" stroke="${INK}" stroke-width="1"/>
+      <circle cx="40" cy="116" r="2.2" fill="#f2c46d"/><circle cx="62" cy="108" r="1.8" fill="#c8553d"/><circle cx="52" cy="124" r="2" fill="#fbfbf7"/>
+      <path d="M27 54 q-6 -36 23 -36 q29 0 23 36 l-4 -18 q-19 -8 -38 0z" fill="#3d2c29" stroke="${INK}" stroke-width="2"/>
+      ${face}
+      <path d="M24 30 q26 -16 52 0 l-2 8 q-24 -10 -48 0z" fill="#c8553d" stroke="${INK}" stroke-width="1.6"/><circle cx="78" cy="30" r="4" fill="#c8553d" stroke="${INK}" stroke-width="1.2"/>
+      <g transform="translate(82 96) rotate(18)"><rect x="-3" y="0" width="6" height="26" rx="2" fill="#8a5a44" stroke="${INK}" stroke-width="1.2"/><rect x="-11" y="-12" width="22" height="13" rx="4" fill="#f6e3b4" stroke="${INK}" stroke-width="1.4"/><path d="M-11 -8 h22" stroke="#e3a33b" stroke-width="3"/></g>`;
+  } else if (id === 'chloe') {
+    body = `
+      <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#2a3d52" stroke="${INK}" stroke-width="2"/>
+      <path d="M42 74 l8 14 l8 -14" fill="#fbfbf7" stroke="${INK}" stroke-width="1.4"/>
+      <rect x="58" y="92" width="14" height="8" rx="2" fill="#f6e3b4" stroke="${INK}" stroke-width="1"/><path d="M60 96 h10" stroke="#3f6f8f" stroke-width="1.6"/>
+      <path d="M30 76 q20 18 40 0" fill="none" stroke="#f2c46d" stroke-width="3" stroke-dasharray="3 3"/>
+      <path d="M26 66 q-8 -50 24 -50 q32 0 24 50 q-6 4 -6 -14 q-2 -18 -18 -22 q-16 4 -18 22 q0 18 -6 14z" fill="#b5653a" stroke="${INK}" stroke-width="2"/>
+      ${face}
+      <circle cx="35" cy="54" r="2.4" fill="#f2c46d"/><circle cx="65" cy="54" r="2.4" fill="#f2c46d"/>
+      <g transform="translate(82 104)"><path d="M-12 -14 h24 l-3 26 h-18z" fill="#c8553d" stroke="${INK}" stroke-width="1.4"/><path d="M-6 -14 q6 -10 12 0" fill="none" stroke="${INK}" stroke-width="1.4"/></g>`;
   } else if (id === 'you') {
     body = `
       <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#f2c46d" stroke="${INK}" stroke-width="2"/>
@@ -784,7 +844,7 @@ export function character(id, mood = 'happy') {
 
 // ---------- Stadskarta över Port-Saint-Clément ----------
 // units: [{fr, color, state: 'done'|'cur'|'open'|'locked'}], i kursordning
-const MAP_POS = [[46, 236], [92, 214], [140, 228], [186, 206], [232, 222], [212, 172], [160, 160], [106, 150], [54, 128], [96, 96], [150, 108], [204, 90], [170, 52], [114, 44], [60, 62], [22, 100], [28, 38], [84, 28]];
+const MAP_POS = [[46, 236], [92, 214], [140, 228], [186, 206], [232, 222], [212, 172], [160, 160], [106, 150], [54, 128], [96, 96], [150, 108], [204, 90], [170, 52], [114, 44], [60, 62], [22, 100], [28, 38], [84, 28], [146, 22], [212, 34]];
 export function townMap(units) {
   const W = 360, H = 270;
   let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="town-map" role="img" aria-label="Karta över Port-Saint-Clément">`;
@@ -793,7 +853,7 @@ export function townMap(units) {
   s += `<path d="M0 0 H250 Q236 40 252 80 T246 160 Q232 200 256 236 L270 270 H0z" fill="#d9e7b8" stroke="${INK}" stroke-width="2"/>`;
   s += `<path d="M0 0 H250 Q236 40 252 80 T246 160 Q232 200 256 236 L270 270 H0z" fill="none" stroke="#efe2b0" stroke-width="6" opacity=".9" transform="translate(4 0)"/>`;
   // skog, kullar, åker
-  [[150, 16], [176, 22], [200, 30], [216, 18], [28, 180], [14, 196], [228, 130]].forEach(([x, y]) => s += `<circle cx="${x}" cy="${y}" r="9" fill="#8fb86a" stroke="${INK}" stroke-width="1"/>`);
+  [[246, 56], [236, 18], [178, 20], [28, 180], [14, 196], [228, 130]].forEach(([x, y]) => s += `<circle cx="${x}" cy="${y}" r="9" fill="#8fb86a" stroke="${INK}" stroke-width="1"/>`);
   s += `<path d="M120 0 q30 22 6 40" fill="none" stroke="#7fb4d0" stroke-width="7" stroke-linecap="round"/>`;
   // vägen genom kvarteren
   const pts = MAP_POS.slice(0, units.length);
