@@ -381,7 +381,8 @@ function shell(inner) {
   $$('[data-nav]').forEach(b => b.onclick = () => go(b.dataset.nav));
   $$('[data-stat]').forEach(b => b.onclick = () => statInfo(b.dataset.stat));
 }
-function go(v) { view = v; tick(); ({ home: renderHome, league: renderLeague, profile: renderProfile })[v](); window.scrollTo(0, 0); }
+function timeOfDay() { const h = new Date().getHours(); return h >= 21 || h < 6 ? 'night' : h < 9 ? 'morning' : h >= 17 ? 'evening' : 'day'; }
+function go(v) { view = v; tick(); document.body.dataset.tod = timeOfDay(); ({ home: renderHome, league: renderLeague, profile: renderProfile })[v](); window.scrollTo(0, 0); }
 
 function statInfo(kind) {
   if (kind === 'streak') {
@@ -425,7 +426,7 @@ function renderHome() {
     html += `<section class="unit ${unlocked ? '' : 'locked'}" style="--uc:${un.color};--ud:${un.dark}">
       <div class="unit-head"><div><small>Kvarter ${u + 1} · ${un.level}</small><h2>${un.fr}</h2><p>${un.sv} – ${un.desc}</p></div>
       <button class="guide-b" data-guide="${u}" aria-label="Guidebok">📖</button></div>
-      <div class="scene">${ART.scene(un.id)}${!unlocked ? `<div class="lock-over"><span>🔒</span><button class="btn small" data-jump="${u}">Hoppa hit?</button></div>` : ''}</div>
+      <div class="scene" data-scene="${un.id}">${ART.scene(un.id)}${!unlocked ? `<div class="lock-over"><span>🔒</span><button class="btn small" data-jump="${u}">Hoppa hit?</button></div>` : ''}</div>
       <div class="path">`;
     un.lessons.forEach((le, l) => {
       const c = crownsOf(le.id), open = lessonUnlocked(u, l), isCur = cur && cur[0] === u && cur[1] === l;
@@ -472,7 +473,7 @@ function renderHome() {
 function welcome() {
   S.welcomed = true; save();
   const un = COURSE[0];
-  sheet(`<div class="welcome">${ART.character(un.character)}<div class="bubble fr" data-say="${esc(un.welcome)}">🔊 ${esc(un.welcome)}</div></div>
+  sheet(`<div class="welcome">${ART.character(un.character, 'wave')}<div class="bubble fr" data-say="${esc(un.welcome)}">🔊 ${esc(un.welcome)}</div></div>
     <h2>Välkommen till Port-Saint-Clément!</h2>
     <p>Det här är en liten stad vid havet. Varje kvarter är en del av kursen – börja hos Madame Brioche på bageriet.</p>
     <p class="muted">Tryck på 🔊 för att höra franskan. Gör en lektion om dagen för att bygga din svit 🔥 och peppa varandra i Ligan 🏆.</p>
@@ -486,7 +487,7 @@ function nodeSheet(u, l) {
   const un = COURSE[u], le = lessonAt(u, l), c = crownsOf(le.id), open = lessonUnlocked(u, l);
   if (!open) { toast('Klara lektionen före först 🔒'); return; }
   const lvlTxt = c >= 3 ? 'Mästrad 👑' : `Nivå ${c + 1} av 3`;
-  sheet(`<div class="ns-head" style="--uc:${un.color}"><small>${un.fr} · Lektion ${l + 1}</small><h2>${esc(le.title)}</h2><p>${esc(le.sv)}</p></div>
+  sheet(`<div class="ns-char">${ART.character(un.character, 'wave')}</div><div class="ns-head" style="--uc:${un.color}"><small>${un.fr} · Lektion ${l + 1}</small><h2>${esc(le.title)}</h2><p>${esc(le.sv)}</p></div>
     <div class="chips">${le.words.slice(0, 8).map(w => `<span class="chip" data-say="${esc(w.fr)}">${w.e} ${esc(w.fr)}</span>`).join('')}</div>
     <p class="muted">${lvlTxt}${c >= 1 && c < 3 ? ' – högre nivåer har mer skrivande och lyssnande.' : ''}</p>
     ${S.hearts === 0 ? `<p class="warn">Du har inga hjärtan kvar. Öva för att få tillbaka ett, eller vänta ${nextHeartIn()} min.</p><button class="btn" id="hp">🏋️ Öva</button>` :
@@ -934,6 +935,7 @@ function showFeedback(r) {
     else if (L.kind !== 'test') L.done++; // räkna ändå fram efter andra försöket
     if (L.kind === 'test') L.done++;
   }
+  const nc = $('.npc-c'); if (nc) { nc.innerHTML = ART.character(COURSE[ex.u ?? 0].character, r.ok ? 'happy' : 'think'); nc.classList.remove('hop'); void nc.offsetWidth; if (r.ok) nc.classList.add('hop'); }
   const fb = $('#fb'), foot = $('#lfoot');
   foot.classList.add(r.ok ? 'ok' : 'bad');
   const ansFr = r.say || (ex.s ? ex.s.fr : null);

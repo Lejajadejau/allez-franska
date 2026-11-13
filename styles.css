@@ -79,7 +79,7 @@ svg { display: block; width: 100%; height: auto; }
 .unit.future .unit-head { background: #a7a29a; border-color: #8a857d; }
 .unit.future .scene { border-color: #8a857d; }
 .unit.future .scene svg, .unit.locked .scene svg { filter: grayscale(.85) brightness(1.05); opacity: .8; }
-.lock-over { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; }
+.lock-over { position: absolute; z-index: 2; inset: 0; display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; }
 .lock-over > span { font-size: 2rem; }
 .lock-over .soon { font-size: .9rem; font-weight: 900; background: var(--paper); padding: 6px 12px; border-radius: 99px; border: 2px solid var(--line); }
 .path { position: relative; display: flex; flex-direction: column; align-items: center; padding: 22px 0 6px; gap: 14px; }
@@ -383,3 +383,26 @@ textarea:focus, input:focus { outline: none; border-color: #8db3d4; }
 .mapcard svg .a-blink { animation: blink 2.4s ease-in-out infinite; }
 .mapcard svg .a-gull { animation: gullfly 22s linear infinite; }
 .unit { scroll-margin-top: 70px; }
+
+/* Figurer: vinkning, tänkande och glädjeskutt */
+.char-wave { animation: wave-hand 1.4s ease-in-out 3; transform-box: fill-box; transform-origin: 90% 95%; }
+@keyframes wave-hand { 25% { transform: rotate(-16deg); } 75% { transform: rotate(14deg); } }
+.char-think circle { animation: blink 1.6s ease-in-out infinite; }
+.npc-c.hop { animation: hop .5s ease; }
+@keyframes hop { 40% { transform: translateY(-10px) rotate(-3deg); } }
+.ns-char { width: 74px; margin: -6px auto 2px; }
+.ns-char svg { width: 100%; height: auto; }
+.scene svg .a-dance { animation: dance .9s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+@keyframes dance { 25% { transform: translateY(-2px) rotate(-4deg); } 75% { transform: translateY(-2px) rotate(4deg); } }
+
+/* Tid på dygnet: morgon, kväll och natt */
+.scene { isolation: isolate; }
+.scene::after { content: ''; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: 0; transition: opacity .6s; }
+.scene svg .lamp-glow { opacity: 0; transition: opacity .6s; }
+body[data-tod="morning"] .scene::after { background: linear-gradient(#ffd7c2, #fff4e6 70%); opacity: .55; }
+body[data-tod="evening"] .scene::after { background: linear-gradient(#f6a66b, #ffd9a8 75%); opacity: .55; }
+body[data-tod="night"] .scene::after { background: linear-gradient(#26346b, #4a5a96 80%); opacity: .62; }
+body[data-tod="night"] .scene svg .lamp-glow, body[data-tod="evening"] .scene svg .lamp-glow { opacity: .75; }
+body[data-tod="night"] .scene svg .win, body[data-tod="evening"] .scene svg .win { fill: #ffd97a; }
+body[data-tod="night"] .scene[data-scene="festival"]::after, body[data-tod="evening"] .scene[data-scene="festival"]::after { opacity: 0; }
+body[data-tod="night"] .scene svg .lamp-glow { filter: blur(2px); }

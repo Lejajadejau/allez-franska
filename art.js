@@ -30,7 +30,7 @@ function house(x, y, w, h, opt = {}) {
   const ww = w * 0.16;
   [[0.12, 0.58], [0.84 - 0.16, 0.58]].forEach(([fx, fy]) => {
     s += `<rect x="${x + w * fx - ww * 0.42}" y="${y + h * fy}" width="${ww * 0.38}" height="${h * 0.2}" fill="${shut}" stroke="${INK}" stroke-width="1"/><rect x="${x + w * fx + ww * 1.04}" y="${y + h * fy}" width="${ww * 0.38}" height="${h * 0.2}" fill="${shut}" stroke="${INK}" stroke-width="1"/>`;
-    s += `<rect x="${x + w * fx}" y="${y + h * fy}" width="${ww}" height="${h * 0.2}" rx="2" fill="#a9d3e6" stroke="${INK}" stroke-width="1.5"/><line x1="${x + w * fx + ww / 2}" y1="${y + h * fy}" x2="${x + w * fx + ww / 2}" y2="${y + h * fy + h * 0.2}" stroke="${INK}" stroke-width="1"/>`;
+    s += `<rect x="${x + w * fx}" y="${y + h * fy}" width="${ww}" height="${h * 0.2}" rx="2" class="win" fill="#a9d3e6" stroke="${INK}" stroke-width="1.5"/><line x1="${x + w * fx + ww / 2}" y1="${y + h * fy}" x2="${x + w * fx + ww / 2}" y2="${y + h * fy + h * 0.2}" stroke="${INK}" stroke-width="1"/>`;
     s += `<rect x="${x + w * fx - 2}" y="${y + h * fy + h * 0.2}" width="${ww + 4}" height="4" fill="#c8553d" stroke="${INK}" stroke-width="1"/>`;
   });
   s += `</g>`;
@@ -66,7 +66,7 @@ function cobbles(y, w, h) {
 
 function lamp(x, y) {
   return `<g stroke="${INK}" stroke-width="1.5"><line x1="${x}" y1="${y}" x2="${x}" y2="${y - 60}" stroke-width="3"/>
-  <path d="M${x - 8} ${y - 60} h16 l-3 -14 h-10 z" fill="#f6d47a"/><path d="M${x - 9} ${y - 74} h18 l-9 -6 z" fill="${INK}"/></g>`;
+  <circle class="lamp-glow" cx="${x}" cy="${y - 66}" r="16" fill="#ffe08a" stroke="none"/><path d="M${x - 8} ${y - 60} h16 l-3 -14 h-10 z" fill="#f6d47a"/><path d="M${x - 9} ${y - 74} h18 l-9 -6 z" fill="${INK}"/></g>`;
 }
 
 function flowers(x, y) {
@@ -154,7 +154,7 @@ const EXTRA = {
   hotel: { back: '', front: () => person(110, 197, { item: 'suitcase' }) + person(125, 198, { dress: 1 }) + person(265, 197, { top: '#a8744f', hat: '#7c5236' }) + bush(60, 184) + bush(300, 184, '#6f9a5b') + flyingGulls() },
   poste: { back: backdrop(), front: () => person(205, 197, { item: 'bag', top: '#d4a637', hat: '#3f5a74' }) + person(120, 198, { dress: 1 }) + dog(150, 198) + laundry(296, 96, 356, 100) + flyingGulls() },
   plage: { back: '', front: () => person(180, 186, { s: .75, item: 'arms', top: '#e3a33b' }) + person(110, 160, { s: .55, top: '#3e8fb8' }) + `<g class="a-bob"><path d="M130 124 h40 l-6 8 h-28z" fill="#fbf3e4" stroke="${INK}" stroke-width="1.2"/><line x1="150" y1="124" x2="150" y2="100" stroke="${INK}" stroke-width="1.2"/><path d="M151 102 l14 18 h-14z" fill="#d06a8e" stroke="${INK}" stroke-width="1"/></g>` + person(320, 190, { dress: 1, top: '#d64933' }) + `<g class="a-flag"></g>` + flyingGulls() },
-  anniversaire: { back: '', front: () => person(60, 182, { item: 'balloon', s: .8 }) + person(290, 182, { dress: 1, s: .9 }) + person(320, 183, { s: .7, item: 'arms' }) + cat(200, 196) },
+  anniversaire: { back: '', front: () => person(70, 196, { item: 'balloon', s: 1.5 }) + person(112, 198, { dress: 1, s: 1.45, hair: '#e8e6e2', top: '#b48ad6' }) + person(250, 198, { s: 1.5, item: 'arms', cls: 'a-dance' }) + person(288, 197, { dress: 1, s: 1.45 }) + person(322, 199, { s: 1.05, item: 'arms', cls: 'a-dance' }) + cat(200, 198) },
   mairie: { back: '', front: () => person(130, 198, { hat: '#3f4f80' }) + person(146, 199, { dress: 1, item: 'bag' }) + person(230, 198, { item: 'arms' }) + person(250, 199, { s: .72 }) + bench(300, 198) + tree(40, 185, .8) + dog(330, 199) + flyingGulls() },
   festival: { back: '', front: () => '' },
 };
@@ -472,8 +472,16 @@ function festival() {
   for (let i = 0; i < 8; i++) s += `<path d="M${60 + i * 30} 96 q15 12 30 0" fill="${i % 2 ? '#f2c46d' : '#c4532f'}" stroke="${INK}" stroke-width="1.2"/>`;
   s += `<path d="M110 156 l40 -60 h60 l40 60z" fill="#f6d47a" opacity=".25"/>`;
   s += `<rect x="168" y="118" width="24" height="38" rx="4" fill="#3e8fb8"/><circle cx="180" cy="112" r="8" fill="#f4cba6"/><path d="M164 134 l30 -8" stroke="#8a5a44" stroke-width="6" stroke-linecap="round"/>`;
+  // girlanger med lampor
+  s += `<path d="M0 66 Q90 90 180 70 T360 68" fill="none" stroke="#1a1530" stroke-width="1"/>`;
+  for (let i = 0; i < 18; i++) { const t = i / 17, x = t * 360, y = 66 + Math.sin(t * Math.PI * 2) * 10 + 4; s += `<circle class="a-blink" style="animation-delay:${-(i % 4) * .6}s" cx="${x}" cy="${y}" r="2.6" fill="${['#f2c46d', '#d06a8e', '#7fd0e8', '#9be08a'][i % 4]}"/>`; }
+  // crêpestånd och ballonger
+  s += `<g transform="translate(300 156)"><rect x="-26" y="-34" width="52" height="34" fill="#f3e2b8" stroke="${INK}" stroke-width="1.5"/><path d="M-30 -34 h60 l-6 -10 h-48z" fill="#c4532f" stroke="${INK}" stroke-width="1.3"/><text x="0" y="-15" text-anchor="middle" font-size="9" font-family="Fraunces,Georgia,serif" font-weight="700" fill="#7a3a1a">CRÊPES</text><circle cx="-10" cy="-6" r="4" fill="#e3a865"/><circle cx="10" cy="-6" r="4" fill="#e3a865"/></g>`;
+  s += `<g transform="translate(40 156)"><rect x="-22" y="-28" width="44" height="28" fill="#dfe8f0" stroke="${INK}" stroke-width="1.5"/><path d="M-26 -28 h52 l-6 -9 h-40z" fill="#3e8fb8" stroke="${INK}" stroke-width="1.3"/><text x="0" y="-11" text-anchor="middle" font-size="8" font-family="Nunito,sans-serif" font-weight="900" fill="#2a6a8c">CIDRE</text></g>`;
   s += `<rect x="0" y="156" width="360" height="44" fill="#4a3a3a"/>`;
-  for (let i = 0; i < 16; i++) { const x = 10 + i * 23, y = 168 + (i % 3) * 4; s += `<circle cx="${x}" cy="${y}" r="9" fill="${['#2b2240', '#3a2f50', '#251d36'][i % 3]}"/>`; if (i % 4 === 1) s += `<line x1="${x}" y1="${y - 6}" x2="${x + 4}" y2="${y - 22}" stroke="#2b2240" stroke-width="4" stroke-linecap="round"/>`; }
+  // publiken: riktiga människor i färg, några dansar och vinkar
+  for (let i = 0; i < 13; i++) { const x = 14 + i * 27 + (i % 2) * 6, y = 200 - (i % 3) * 3; s += person(x, y, { s: 1.05 - (i % 3) * .06, item: i % 3 === 1 ? 'arms' : i === 6 ? 'balloon' : '', dress: i % 4 === 2, cls: i % 2 ? 'a-dance' : 'a-sway' }); }
+  s += person(180, 205, { s: .8, item: 'arms', cls: 'a-dance' }) + dog(250, 204, '#c49a6c');
   return s + `</svg>`;
 }
 
@@ -502,12 +510,16 @@ export function skyline() {
 
 // ---------- Figurer ----------
 export function character(id, mood = 'happy') {
-  const mouth = mood === 'sad'
+  const think = mood === 'think', waving = mood === 'wave';
+  if (think || waving) mood = waving ? 'happy' : 'think';
+  const mouth = mood === 'think' ? `<path d="M45 57 h10" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`
+    : mood === 'sad'
     ? `<path d="M44 58 q6 -5 12 0" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`
     : mood === 'wow'
       ? `<ellipse cx="50" cy="58" rx="4" ry="5" fill="${INK}"/>`
       : `<path d="M43 55 q7 8 14 0" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`;
-  const eyes = `<circle cx="42" cy="46" r="2.6" fill="${INK}"/><circle cx="58" cy="46" r="2.6" fill="${INK}"/>`;
+  const eyes = think ? `<circle cx="43" cy="44" r="2.6" fill="${INK}"/><circle cx="59" cy="44" r="2.6" fill="${INK}"/><path d="M38 38 l7 -2 M55 37 l7 2" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`
+    : `<circle cx="42" cy="46" r="2.6" fill="${INK}"/><circle cx="58" cy="46" r="2.6" fill="${INK}"/>`;
   const cheeks = `<circle cx="36" cy="54" r="4" fill="#ef9f92" opacity=".7"/><circle cx="64" cy="54" r="4" fill="#ef9f92" opacity=".7"/>`;
   const face = `<circle cx="50" cy="48" r="20" fill="#f4cba6" stroke="${INK}" stroke-width="2"/>${cheeks}${eyes}${mouth}`;
   let body = '';
@@ -670,7 +682,10 @@ export function character(id, mood = 'happy') {
       <path d="M30 42 q0 -20 20 -20 q20 0 20 20 q-10 -8 -20 -8 q-10 0 -20 8z" fill="#3d2c29"/>
       ${face}`;
   }
-  return `<svg viewBox="0 0 100 134" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${body}</svg>`;
+  let extra = '';
+  if (waving) extra = `<g class="char-wave"><path d="M24 96 q-12 -14 -10 -34" fill="none" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="M24 96 q-12 -14 -10 -34" fill="none" stroke="#f4cba6" stroke-width="4.6" stroke-linecap="round"/><circle cx="14" cy="58" r="6" fill="#f4cba6" stroke="${INK}" stroke-width="1.6"/></g>`;
+  if (think) extra = `<g class="char-think"><circle cx="80" cy="20" r="3" fill="#fff" stroke="${INK}" stroke-width="1.2"/><circle cx="88" cy="10" r="5" fill="#fff" stroke="${INK}" stroke-width="1.2"/></g>`;
+  return `<svg viewBox="0 0 100 134" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="overflow:visible">${body}${extra}</svg>`;
 }
 
 
