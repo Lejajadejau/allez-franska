@@ -350,3 +350,36 @@ textarea:focus, input:focus { outline: none; border-color: #8db3d4; }
 @keyframes chestpop { 0% { transform: scale(.6) } 60% { transform: scale(1.25) } 100% { transform: scale(1) } }
 .q-row .pbar, .ach .pbar { height: 8px; }
 .q-row .pbar i::after, .ach .pbar i::after { display: none; }
+
+/* Liv i miljöerna */
+.scene svg .a-gull { animation: gullfly 18s linear infinite; }
+.scene svg .a-gull.slow { animation-duration: 26s; animation-delay: -9s; }
+@keyframes gullfly { from { transform: translateX(-40px); } to { transform: translateX(400px); } }
+.scene svg .a-bob { animation: boatbob 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center bottom; }
+.scene svg .a-bob.slow { animation-duration: 4.4s; animation-delay: -1s; }
+@keyframes boatbob { 50% { transform: translateY(2px) rotate(1.5deg); } }
+.scene svg .a-wave { animation: wave 4s ease-in-out infinite; }
+@keyframes wave { 50% { transform: translateX(6px); } }
+.scene svg .a-smoke { animation: smoke 5s ease-out infinite; transform-box: fill-box; transform-origin: bottom; }
+@keyframes smoke { 0% { opacity: 0; transform: translateY(6px) scale(.6); } 30% { opacity: .7; } 100% { opacity: 0; transform: translateY(-14px) scale(1.2); } }
+.scene svg .a-blink { animation: blink 2.4s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: .1; } }
+.scene svg .a-sway { animation: sway 3.6s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+@keyframes sway { 50% { transform: rotate(1.6deg); } }
+.scene svg .a-flap { animation: flap 2.2s ease-in-out infinite; transform-box: fill-box; transform-origin: top; }
+@keyframes flap { 50% { transform: skewX(8deg); } }
+.scene svg .a-tail { animation: none; }
+.scene svg .a-leaves { animation: sway 5s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+.mapcard { padding: 10px 12px; margin-bottom: 10px; }
+.mapcard summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 6px; }
+.mapcard summary::-webkit-details-marker { display: none; }
+.mapcard summary::after { content: '▾'; margin-left: auto; color: var(--ink2); }
+.mapcard[open] summary::after { content: '▴'; }
+.mapcard svg { display: block; width: 100%; height: auto; margin-top: 8px; border-radius: 12px; border: 2px solid #3d2c29; }
+.mapcard .map-pulse { animation: mappulse 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes mappulse { 50% { transform: scale(1.35); opacity: .05; } }
+.mapcard svg .a-bob { animation: boatbob 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center bottom; }
+.mapcard svg .a-wave { animation: wave 4s ease-in-out infinite; }
+.mapcard svg .a-blink { animation: blink 2.4s ease-in-out infinite; }
+.mapcard svg .a-gull { animation: gullfly 22s linear infinite; }
+.unit { scroll-margin-top: 70px; }

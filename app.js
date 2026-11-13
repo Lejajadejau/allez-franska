@@ -410,6 +410,10 @@ function renderHome() {
   const pct = Math.min(100, Math.round(S.dayXp / S.dailyGoal * 100));
   html += `<div class="goal card"><div><b>Dagens mål</b><span class="muted"> ${S.dayXp}/${S.dailyGoal} XP</span></div><div class="pbar"><i style="width:${pct}%"></i></div>${pct >= 100 ? '<span class="goal-ok">✓</span>' : ''}</div>`;
   html += questCard();
+  const curU = cur ? cur[0] : -1;
+  html += `<details class="card mapcard" ${S.mapOpen ? 'open' : ''}><summary><b>🗺️ Stadskartan</b><span class="muted small"> ${COURSE.filter((_, u) => unitDone(u)).length} av ${COURSE.length} kvarter klara</span></summary>
+    ${ART.townMap(COURSE.map((un, u) => ({ fr: un.fr, color: un.color, state: unitDone(u) ? 'done' : u === curU ? 'cur' : unitUnlocked(u) ? 'open' : 'locked' })))}
+    <p class="muted small">Tryck på ett hus för att gå till kvarteret.</p></details>`;
   if (doneLessons().length) {
     const weak = weakCount();
     const label = S.hearts < HEART_MAX ? '🏋️ Öva och få tillbaka ❤️' : weak ? `🏋️ Repetera ${weak} ${weak === 1 ? 'svårt ord eller mening' : 'svåra ord och meningar'}` : '🏋️ Snabbövning (+5 XP)';
@@ -453,6 +457,8 @@ function renderHome() {
   $$('.node:not(.story)').forEach(n => n.onclick = () => nodeSheet(+n.dataset.u, +n.dataset.l));
   $$('.node.story').forEach(n => n.onclick = () => { const [u, si] = n.dataset.story.split(':').map(Number); storySheet(u, si); });
   $$('[data-guide]').forEach(b => b.onclick = () => guide(+b.dataset.guide));
+  const mc = $('.mapcard'); if (mc) mc.ontoggle = () => { S.mapOpen = mc.open; save(false); };
+  $$('.map-pin').forEach(p => p.addEventListener('click', () => { const sec = $$('.unit')[+p.dataset.unit]; if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
   $$('[data-jump]').forEach(b => b.onclick = () => jumpSheet(+b.dataset.jump));
   const p = $('#practice'); if (p) p.onclick = startPractice;
   const curEl = $('.node.cur'); if (curEl && !renderHome.scrolled) { renderHome.scrolled = true; setTimeout(() => curEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 150); }
