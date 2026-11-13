@@ -1,6 +1,7 @@
 // Kursinnehåll för Port-Saint-Clément.
 // Ord: fr = franska, sv = svenska (alternativ med |), e = bild (emoji)
 // Meningar: fr, sv (alternativ med |), alt = andra godtagbara franska svar
+import { MORE } from './units2.js';
 
 export const COURSE = [
   {
@@ -947,6 +948,7 @@ export const COURSE = [
     ],
   },
 ];
+COURSE.push(...MORE);
 
 // Kvarter som visas på kartan men inte är byggda än
 export const FUTURE = [];

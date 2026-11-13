@@ -114,6 +114,7 @@ const DEFAULT = {
   streak: 0, lastActive: null, freezes: 0, hearts: HEART_MAX, heartsTs: Date.now(), ecus: 30,
   crowns: {}, sound: true, speak: true, speakPausedUntil: 0, goalBonusDay: '', cheersSent: {},
   lessonsDone: 0, perfect: 0, updatedAt: 0, welcomed: false,
+  q: null, questsDone: 0, chestDay: '', ach: {}, practiceDone: 0,
 };
 let S = null, userId = 'local', sb = null, offline = false;
 const storeKey = () => 'psc_state_' + userId;
@@ -162,6 +163,81 @@ function registerActivity() {
   let gotFreeze = false;
   if (S.streak % 7 === 0 && S.freezes < 2) { S.freezes++; gotFreeze = true; }
   return { extended: true, streak: S.streak, before, usedFreeze: used, gotFreeze };
+}
+
+
+// ================= Dagens uppdrag och utmärkelser =================
+const QUEST_POOL = [
+  { id: 'xp', n: [20, 30, 40], t: n => `Samla ${n} XP`, e: '⚡' },
+  { id: 'lessons', n: [2, 3], t: n => `Gör ${n} lektioner`, e: '📘' },
+  { id: 'perfect', n: [1], t: () => 'Gör en lektion utan fel', e: '🎯' },
+  { id: 'story', n: [1, 2], t: n => n === 1 ? 'Lyssna på ett samtal' : `Lyssna på ${n} samtal`, e: '🎧' },
+  { id: 'practice', n: [1], t: () => 'Gör en repetition', e: '🏋️' },
+  { id: 'combo', n: [8, 12], t: n => `Svara rätt ${n} gånger i rad`, e: '🔥' },
+];
+function hashStr(str) { let h = 2166136261; for (const c of str) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function quests() {
+  const dk = dayKey();
+  if (!S.q || S.q.day !== dk) {
+    let h = hashStr(dk + (S.name || '')); const pool = [...QUEST_POOL]; const list = [];
+    if (!doneLessons().length) pool.splice(pool.findIndex(q => q.id === 'practice'), 1);
+    for (let i = 0; i < 3; i++) { const q = pool.splice(h % pool.length, 1)[0]; h = Math.imul(h ^ (h >>> 13), 2654435761) >>> 0; list.push({ id: q.id, n: q.n[h % q.n.length], p: 0, done: false }); }
+    S.q = { day: dk, list };
+  }
+  return S.q.list;
+}
+const questDef = id => QUEST_POOL.find(q => q.id === id);
+// Uppdaterar uppdragen efter en avslutad aktivitet. Returnerar html med nya belöningar.
+function progressQuests(ev) {
+  let html = '';
+  quests().forEach(q => {
+    if (q.done) return;
+    if (q.id === 'xp') q.p = S.dayXp;
+    else if (q.id === 'lessons' && ev.kind === 'lesson') q.p++;
+    else if (q.id === 'perfect' && ev.kind === 'lesson' && ev.perfect) q.p++;
+    else if (q.id === 'story' && ev.kind === 'story') q.p++;
+    else if (q.id === 'practice' && ev.kind === 'practice') q.p++;
+    else if (q.id === 'combo') q.p = Math.max(q.p, ev.combo || 0);
+    if (q.p >= q.n) { q.done = true; q.p = q.n; S.ecus += 10; S.questsDone++; html += `<p class="unlock">${questDef(q.id).e} Uppdrag klart: ${questDef(q.id).t(q.n)}! +10 🪙</p>`; }
+  });
+  if (quests().every(q => q.done) && S.chestDay !== S.q.day) { S.chestDay = S.q.day; S.ecus += 25; html += `<p class="unlock">🎁 Alla dagens uppdrag klara! Skattkistan gav +25 🪙</p>`; }
+  return html;
+}
+function questCard() {
+  const list = quests(), all = list.every(q => q.done);
+  return `<div class="card quests"><div class="q-head"><b>Dagens uppdrag</b><span class="chest ${all ? 'open' : ''}">${all ? '🎁' : '🧰'}</span></div>
+    ${list.map(q => { const d = questDef(q.id), pct = Math.round(Math.min(q.p, q.n) / q.n * 100);
+      return `<div class="q-row ${q.done ? 'done' : ''}"><span class="q-e">${q.done ? '✅' : d.e}</span><div class="q-b"><div class="q-t">${d.t(q.n)}</div><div class="pbar"><i style="width:${pct}%"></i></div></div><small>${Math.min(q.p, q.n)}/${q.n}</small></div>`; }).join('')}
+    <p class="muted small">10 🪙 per uppdrag – klara alla tre för en skattkista.</p></div>`;
+}
+
+const unitsDone = () => COURSE.filter((_, u) => unitDone(u)).length;
+const storiesDone = () => Object.keys(S.stories || {}).length;
+const totalStories = () => Object.values(STORIES).reduce((n, a) => n + a.length, 0);
+const ACH = [
+  { id: 'streak', e: '🔥', name: 'Ihärdig', d: n => `${n} dagar i rad`, lv: [3, 7, 30, 100], v: () => Math.max(S.streak || 0, streakOf(S)) },
+  { id: 'xp', e: '⚡', name: 'Flitig', d: n => `${n} XP totalt`, lv: [100, 500, 2000, 5000], v: () => S.xp },
+  { id: 'lessons', e: '📘', name: 'Lärling', d: n => `${n} lektioner`, lv: [10, 50, 150, 300], v: () => S.lessonsDone },
+  { id: 'perfect', e: '🎯', name: 'Perfektionist', d: n => `${n} lektioner utan fel`, lv: [5, 25, 75], v: () => S.perfect },
+  { id: 'stories', e: '🎧', name: 'Lyssnare', d: n => `${n} samtal`, lv: [3, 15, 45], v: storiesDone },
+  { id: 'units', e: '🗺️', name: 'Upptäckare', d: n => `${n} kvarter klara`, lv: [1, 5, 10, 15], v: unitsDone },
+  { id: 'words', e: '📚', name: 'Ordförråd', d: n => `${n} ord`, lv: [50, 200, 500], v: () => wordsLearned() },
+  { id: 'quests', e: '🧰', name: 'Uppdragstagare', d: n => `${n} uppdrag`, lv: [10, 50, 150], v: () => S.questsDone },
+];
+const achLevel = a => a.lv.filter(n => a.v() >= n).length;
+function checkAchievements() {
+  let html = '';
+  S.ach = S.ach || {};
+  ACH.forEach(a => {
+    const lv = achLevel(a), had = S.ach[a.id] || 0;
+    if (lv > had) { S.ach[a.id] = lv; S.ecus += 20 * (lv - had); html += `<p class="unlock">🏅 Ny utmärkelse: ${a.e} ${a.name} – ${a.d(a.lv[lv - 1])}! +${20 * (lv - had)} 🪙</p>`; }
+  });
+  return html;
+}
+function achGrid() {
+  return `<div class="ach-grid">${ACH.map(a => { const lv = achLevel(a), max = a.lv.length, nextN = a.lv[Math.min(lv, max - 1)], val = a.v();
+    return `<div class="card ach ${lv ? 'got' : ''}"><div class="ach-e">${a.e}<span class="ach-lv">${lv}/${max}</span></div><b>${a.name}</b><small>${lv >= max ? 'Max nivå! ' + a.d(a.lv[max - 1]) : a.d(nextN)}</small>
+      ${lv < max ? `<div class="pbar"><i style="width:${Math.min(100, Math.round(val / nextN * 100))}%"></i></div>` : ''}</div>`; }).join('')}</div>`;
 }
 
 // Kursstruktur
@@ -333,6 +409,7 @@ function renderHome() {
   let html = `<section class="banner">${ART.skyline()}<div class="banner-t"><h1>Port-Saint-Clément</h1><p>Franska för familj och vänner</p></div></section>`;
   const pct = Math.min(100, Math.round(S.dayXp / S.dailyGoal * 100));
   html += `<div class="goal card"><div><b>Dagens mål</b><span class="muted"> ${S.dayXp}/${S.dailyGoal} XP</span></div><div class="pbar"><i style="width:${pct}%"></i></div>${pct >= 100 ? '<span class="goal-ok">✓</span>' : ''}</div>`;
+  html += questCard();
   if (doneLessons().length) {
     const weak = weakCount();
     const label = S.hearts < HEART_MAX ? '🏋️ Öva och få tillbaka ❤️' : weak ? `🏋️ Repetera ${weak} ${weak === 1 ? 'svårt ord eller mening' : 'svåra ord och meningar'}` : '🏋️ Snabbövning (+5 XP)';
@@ -582,6 +659,8 @@ function renderProfile() {
       <div class="card stat-c"><b>♛ ${totalCrowns()}</b><span>kronor</span></div>
       <div class="card stat-c"><b>📚 ${wordsLearned()}</b><span>ord</span></div>
     </div>
+    <h3 class="sub">Utmärkelser</h3>
+    ${achGrid()}
     <h3 class="sub">Dagens mål</h3>
     <div class="seg">${[10, 20, 30, 50].map(g => `<button data-goal="${g}" class="${S.dailyGoal === g ? 'on' : ''}">${g} XP<small>${({ 10: 'Lugnt', 20: 'Vanligt', 30: 'Seriöst', 50: 'Intensivt' })[g]}</small></button>`).join('')}</div>
     <h3 class="sub">Butiken</h3>
@@ -594,6 +673,7 @@ function renderProfile() {
       ${sb && userId !== 'local' ? `<label><span>Påminnelser kl. 19 och pepp</span><input type="checkbox" id="setPush" ${S.push ? 'checked' : ''}></label>` : ''}
       <label><span>Ljudeffekter</span><input type="checkbox" id="setSound" ${S.sound ? 'checked' : ''}></label>
       <label><span>Taluppgifter (mikrofon)${SR ? '' : ' – stöds inte här'}</span><input type="checkbox" id="setSpeak" ${S.speak && !S.speakBroken ? 'checked' : ''} ${SR ? '' : 'disabled'}></label>
+      ${AUDIO_ROOT && 'caches' in window ? `<button class="row-b" id="offAudio">⬇️ Ljud offline <small class="muted" id="offInfo"></small></button>` : ''}
       <button class="row-b" id="words">📚 Mina ord (${wordsLearned()})</button>
       <button class="row-b" id="editP">✏️ Byt namn och figur</button>
       <button class="row-b" id="testVoice">🔊 Testa den franska rösten</button>
@@ -609,8 +689,53 @@ function renderProfile() {
   $('#setSpeak').onchange = e => { S.speak = e.target.checked; S.speakPausedUntil = 0; S.speakBroken = false; save(); };
   $('#editP').onclick = () => renderOnboard(true);
   $('#words').onclick = wordList;
+  const oa = $('#offAudio'); if (oa) { offlineInfo().then(t => { const i = $('#offInfo'); if (i) i.textContent = t; }); oa.onclick = offlineSheet; }
   $('#testVoice').onclick = () => say('Bonjour ! Je voudrais un croissant, s\'il vous plaît.');
   const lo = $('#logout'); if (lo) lo.onclick = async () => { await sb.auth.signOut(); localStorage.removeItem('psc_last_user'); location.reload(); };
+}
+
+
+// ================= Ljud offline =================
+const AUDIO_CACHE = 'allez-audio';
+function allAudioUrls(units) {
+  const urls = new Set();
+  const addTxt = t => { const id = PH[String(t).replace(/\|/g, ' ').trim()]; if (id) urls.add(`${AUDIO_ROOT}ph/p${id}.mp3`); };
+  units.forEach(u => {
+    const un = COURSE[u]; addTxt(un.welcome); un.tips.forEach(t => addTxt(t.fr));
+    un.lessons.forEach(l => { l.words.forEach(w => addTxt(w.fr)); l.sentences.forEach(x => addTxt(x.fr)); l.story?.lines.forEach(x => addTxt(x.fr)); });
+    (STORIES[un.id] || []).forEach(st => st.lines.forEach((_, i) => urls.add(lineUrl(st, i))));
+  });
+  return [...urls];
+}
+async function offlineInfo() {
+  try { const c = await caches.open(AUDIO_CACHE); const n = (await c.keys()).length; return n ? `${n} filer sparade` : ''; } catch { return ''; }
+}
+function offlineSheet() {
+  const reach = COURSE.map((_, u) => u).filter(u => unitUnlocked(u));
+  const mine = allAudioUrls(reach), all = allAudioUrls(COURSE.map((_, u) => u));
+  sheet(`<div class="big-emoji">⬇️</div><h2>Ljud offline</h2>
+    <p>Spara de inspelade rösterna i telefonen, så hörs de även utan nät – på tåget eller utomlands.</p>
+    <div id="offProg" class="muted"></div>
+    <button class="btn primary" id="dlMine">Mina kvarter (${mine.length} ljud, ca ${Math.round(mine.length * 0.025)} MB)</button>
+    <button class="btn" id="dlAll">Hela staden (${all.length} ljud, ca ${Math.round(all.length * 0.025)} MB)</button>
+    <button class="btn" id="dlClear">Ta bort sparat ljud</button>
+    <button class="btn" data-close>Stäng</button>`, (w) => {
+    const prog = $('#offProg', w);
+    const run = async urls => {
+      $$('.btn', w).forEach(b => b.disabled = true);
+      const c = await caches.open(AUDIO_CACHE); const have = new Set((await c.keys()).map(r => r.url));
+      const todo = urls.filter(u => !have.has(u)); let done = 0, fail = 0;
+      const step = async () => { while (todo.length) { const u = todo.pop(); try { const r = await fetch(u); if (r.ok) await c.put(u, r); else fail++; } catch { fail++; } done++; prog.textContent = `Sparar… ${done} av ${done + todo.length}`; } };
+      prog.textContent = todo.length ? 'Sparar…' : 'Allt var redan sparat.';
+      await Promise.all([step(), step(), step(), step()]);
+      try { await navigator.storage?.persist?.(); } catch { }
+      prog.textContent = fail ? `Klart, men ${fail} ljud gick inte att hämta. Försök igen senare.` : '✓ Klart! Ljudet fungerar nu även utan nät.';
+      $$('.btn', w).forEach(b => b.disabled = false);
+    };
+    $('#dlMine', w).onclick = () => run(mine);
+    $('#dlAll', w).onclick = () => run(all);
+    $('#dlClear', w).onclick = async () => { await caches.delete(AUDIO_CACHE); prog.textContent = 'Sparat ljud borttaget.'; };
+  });
 }
 
 function wordList() {
@@ -845,7 +970,7 @@ function finish(completed) {
     xp = 10 + (L.mistakes === 0 ? 5 : 0); ecus = 5 + (L.mistakes === 0 ? 5 : 0);
     S.lessonsDone++; if (L.mistakes === 0) S.perfect++;
     title = 'Leçon terminée !';
-    if (L.l === COURSE[L.u].lessons.length - 1 && S.crowns[le.id] === 1) extra = `<p class="unlock">🚋 Nytt kvarter upplåst!</p>`;
+    if (L.l === COURSE[L.u].lessons.length - 1 && S.crowns[le.id] === 1 && L.u < COURSE.length - 1) extra = `<p class="unlock">🚋 Nytt kvarter upplåst!</p>`;
   } else if (L.kind === 'story') {
     char = COURSE[L.u].character;
     S.stories = S.stories || {}; const first = !S.stories[L.st.id]; S.stories[L.st.id] = true;
@@ -867,6 +992,9 @@ function finish(completed) {
     addXp(xp); S.ecus += ecus;
     streakInfo = registerActivity();
     if (S.dayXp >= S.dailyGoal && S.goalBonusDay !== S.dayKey) { S.goalBonusDay = S.dayKey; S.ecus += 10; extra += '<p class="unlock">🎯 Dagens mål klart! +10 🪙</p>'; }
+    if (L.kind === 'practice') S.practiceDone = (S.practiceDone || 0) + 1;
+    extra += progressQuests({ kind: L.kind, perfect: L.mistakes === 0, combo: L.maxCombo });
+    extra += checkAchievements();
   }
   save();
   const mm = Math.floor(secs / 60), ss = pad(secs % 60);

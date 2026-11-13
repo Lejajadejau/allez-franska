@@ -3,6 +3,8 @@
 // frågor under samtalets gång (på svenska i A1, på enkel franska från A2), och en replik att säga själv.
 // w: 'a' = kvarterets figur, 'b' = den andra personen. qs.at = frågan visas efter den repliken.
 
+import { STORIES2 } from './stories2.js';
+
 export const STORIES = {
   boulangerie: [
     {
@@ -401,3 +403,4 @@ export const STORIES = {
     speak: 4 },
   ],
 };
+Object.assign(STORIES, STORIES2);
