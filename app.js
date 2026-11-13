@@ -5,7 +5,8 @@ import { STORIES } from './stories.js';
 import { PH } from './audiomap.js';
 import { SERIAL } from './serial.js';
 import { SERIAL2 } from './serial2.js';
-const SEASONS = [SERIAL, SERIAL2];
+import { SERIAL3 } from './serial3.js';
+const SEASONS = [SERIAL, SERIAL2, SERIAL3];
 const EPS = SEASONS.flatMap((se, si) => se.eps.map(e => (e.season = si, e)));
 const epNo = ep => SEASONS[ep.season].eps.indexOf(ep) + 1;
 import { SV } from './svmap.js';
@@ -1370,7 +1371,7 @@ function finish(completed) {
     xp = 10 + (L.mistakes === 0 ? 5 : 0); ecus = first ? 15 : 3;
     title = 'Épisode terminé !';
     const ni = EPS.indexOf(L.st) + 1, nx = EPS[ni], endS = !nx || nx.season !== L.st.season;
-    const fin = ['🗼 Mysteriet är löst! Fyren lyser igen.', '⭐ Stjärnan är tillbaka i granen. God jul!'][L.st.season] || '';
+    const fin = ['🗼 Mysteriet är löst! Fyren lyser igen.', '⭐ Stjärnan är tillbaka i granen. God jul!', '🎨 Hela staden firar Mamie Odette!'][L.st.season] || '';
     extra = !first ? '' : endS ? `<p class="unlock">${fin}${nx ? ` I morgon börjar säsong ${nx.season + 1}: <i>${esc(SEASONS[nx.season].title)}</i>.` : ''}</p>`
       : `<p class="unlock">🗝️ Nästa avsnitt kommer i morgon${unitUnlocked(nx.u) ? '' : ` – när du har kommit till ${esc(COURSE[nx.u].fr)}`}.</p>`;
   } else if (L.kind === 'story') {
@@ -1570,14 +1571,14 @@ function storyQuestion(q) {
   L.q = q;
   const nb = $('#snext'); nb.disabled = true; nb.textContent = 'Svara på frågan';
   const box = $('#sq');
-  box.innerHTML = `<div class="sq card"><p class="kind">Fråga</p><h3>${esc(q.q)}</h3><div class="opts">${q.o.map((o, i) => `<button class="opt" data-i="${i}"><span class="num">${i + 1}</span>${esc(o)}</button>`).join('')}</div><div class="sq-fb"></div></div>`;
+  box.innerHTML = `<div class="sq card"><p class="kind">Fråga</p><h3>${esc(q.q)}</h3><div class="opts">${shuffle(q.o.map((o, i) => [o, i])).map(([o, i], k) => `<button class="opt" data-i="${i}"><span class="num">${k + 1}</span>${esc(o)}</button>`).join('')}</div><div class="sq-fb"></div></div>`;
   box.scrollIntoView({ block: 'end', behavior: 'smooth' });
   $$('.opt', box).forEach(b => b.onclick = () => {
     if (!L.q) return;
     const ok = +b.dataset.i === q.a;
     chime(ok);
     b.classList.add(ok ? 'right' : 'wrongo');
-    if (!ok) { L.mistakes++; $$('.opt', box)[q.a].classList.add('right'); L.combo = 0; } else { L.combo++; L.maxCombo = Math.max(L.maxCombo, L.combo); }
+    if (!ok) { L.mistakes++; $(`.opt[data-i="${q.a}"]`, box).classList.add('right'); L.combo = 0; } else { L.combo++; L.maxCombo = Math.max(L.maxCombo, L.combo); }
     $('.sq-fb', box).innerHTML = ok ? `<b class="okc">✓ ${rnd(PRAISE)}</b>` : `<b class="badc">✗ Rätt svar: ${esc(q.o[q.a])}</b> <span class="muted small">– tryck på replikerna för att lyssna igen.</span>`;
     L.q = null; nb.disabled = false; nb.textContent = L.i < L.st.lines.length ? 'Fortsätt ▶' : 'Klart ▶';
   });
@@ -1862,11 +1863,11 @@ function epState(i) {
 }
 const nextEp = () => EPS.findIndex((_, i) => epState(i) !== 'done');
 const curSeason = () => { const i = nextEp(); return i < 0 ? SEASONS.length - 1 : EPS[i].season; };
-const SEASON_IC = ['🗝️', '⭐'];
+const SEASON_IC = ['🗝️', '⭐', '🎨'];
 function serialCard() {
   const s = ser(), i = nextEp(), si = curSeason(), se = SEASONS[si], n = se.eps.filter(e => s.done[e.id]).length;
   let txt, hot = false;
-  if (i < 0) txt = 'Alla avsnitt klara – stjärnan lyser i granen! ⭐';
+  if (i < 0) txt = 'Alla avsnitt klara – fler säsonger kommer! 🎨';
   else {
     const st = epState(i), ep = EPS[i];
     if (st === 'open') { txt = `${n ? 'Nytt avsnitt' : si ? 'Ny säsong' : 'Första avsnittet'}: <i>${esc(ep.title)}</i>`; hot = true; }
@@ -1880,7 +1881,7 @@ function serialSheet(si = curSeason()) {
   const s = ser(), se = SEASONS[si], n = se.eps.filter(e => s.done[e.id]).length;
   const s1done = SERIAL.eps.every(e => s.done[e.id]);
   const tabs = s1done ? `<div class="chips season-tabs">${SEASONS.map((x, k) => `<button class="chip ${k === si ? 'on' : ''}" data-season="${k}">${SEASON_IC[k]} Säsong ${k + 1}</button>`).join('')}</div>` : '';
-  sheet(`<div class="ns-head" style="--uc:${si ? '#2f6b4f' : '#3f5a74'}"><small>Följetong${si ? ` · Säsong ${si + 1}` : ''} · ${n} av ${se.eps.length} avsnitt</small><h2>${esc(se.title)}</h2><p>${esc(se.sv)}</p></div>
+  sheet(`<div class="ns-head" style="--uc:${['#3f5a74', '#2f6b4f', '#b5577a'][si]}"><small>Följetong${si ? ` · Säsong ${si + 1}` : ''} · ${n} av ${se.eps.length} avsnitt</small><h2>${esc(se.title)}</h2><p>${esc(se.sv)}</p></div>
     ${tabs}<p class="muted small">${esc(se.intro)} Ett nytt avsnitt per dag.</p>
     <div class="ep-list">${se.eps.map((ep, k) => {
       const i = EPS.indexOf(ep), st = epState(i), on = st === 'done' || st === 'open';
