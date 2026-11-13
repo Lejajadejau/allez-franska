@@ -73,19 +73,49 @@ function diffHtml(input, answer) {
 
 // ================= Ljud och tal =================
 let actx;
-function chime(ok) {
+// Syntljud: små toner byggda i Web Audio (inga ljudfiler)
+function tones(notes, { type = 'triangle', vol = 0.16, len = 0.28, gap = 0.11 } = {}) {
   if (!S?.sound) return;
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-    const notes = ok ? [659, 988] : [196, 165];
+    if (actx.state !== 'running') actx.resume?.();
     notes.forEach((f, i) => {
-      const o = actx.createOscillator(), g = actx.createGain(), t0 = actx.currentTime + i * 0.11;
-      o.type = ok ? 'triangle' : 'sawtooth'; o.frequency.value = f;
-      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(ok ? 0.18 : 0.05, t0 + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.28);
-      o.connect(g).connect(actx.destination); o.start(t0); o.stop(t0 + 0.3);
+      if (!f) return;
+      const fs = Array.isArray(f) ? f : [f];
+      fs.forEach(fr => {
+        const o = actx.createOscillator(), g = actx.createGain(), t0 = actx.currentTime + i * gap;
+        o.type = type; o.frequency.value = fr;
+        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol / fs.length, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+        o.connect(g).connect(actx.destination); o.start(t0); o.stop(t0 + len + 0.02);
+      });
     });
   } catch { }
+}
+const semi = (f, n) => f * Math.pow(2, n / 12);
+// Rätt/fel. Rätt svar i rad höjer tonen ett halvt tonsteg i taget.
+function chime(ok, combo = 0) {
+  if (ok) { const k = Math.min(Math.max(0, combo - 1), 9); tones([semi(659, k), semi(988, k)]); buzz(combo >= 5 && combo % 5 === 0 ? [15, 40, 15, 40, 30] : 15); }
+  else { tones([196, 165], { type: 'sawtooth', vol: 0.05 }); buzz([60, 50, 60]); }
+}
+// Vibration (Android; iPhone tillåter det inte i webbappar)
+function buzz(pattern) { if (S?.haptic === false) return; try { navigator.vibrate?.(pattern); } catch { } }
+const fx = {
+  fanfare: () => { tones([523, 659, 784, [1047, 784, 659]], { gap: 0.12, len: 0.45, vol: 0.18 }); buzz([20, 60, 20, 60, 80]); },
+  perfect: () => { tones([1319, 1568, 2093], { type: 'sine', gap: 0.08, len: 0.35, vol: 0.12 }); buzz([10, 30, 10]); },
+  tick: () => tones([1760], { type: 'square', vol: 0.025, len: 0.04 }),
+  streak: big => { tones(big ? [392, 523, 659, 784, 1047, [1047, 1319, 1568]] : [440, 554, 659, [880, 1109]], { gap: 0.1, len: 0.5, vol: 0.17 }); buzz(big ? [30, 50, 30, 50, 30, 50, 150] : [30, 60, 100]); },
+  crown: () => tones([1568, 2093], { type: 'sine', gap: 0.07, len: 0.3, vol: 0.1 }),
+};
+// Räknar upp en siffra
+function countUp(el, to, ms = 900, prefix = '+') {
+  if (!el) return; const t0 = performance.now(); let last = -1;
+  const step = now => {
+    const k = Math.min(1, (now - t0) / ms), v = Math.round(to * (1 - Math.pow(1 - k, 3)));
+    if (v !== last) { el.textContent = prefix + v; if (v % 2 === 0) fx.tick(); last = v; }
+    if (k < 1) requestAnimationFrame(step);
+  };
+  el.textContent = prefix + '0'; requestAnimationFrame(step);
 }
 let frVoice = null;
 function loadVoices() {
@@ -841,6 +871,7 @@ function renderProfile() {
       ${sb && userId !== 'local' ? `<label><span>Daglig påminnelse och pepp</span><input type="checkbox" id="setPush" ${S.push ? 'checked' : ''}></label>
         ${S.push ? `<label><span>Påminn mig kl.</span><select id="setHour" class="remind-sel">${Array.from({ length: 16 }, (_, k) => k + 7).map(h => `<option value="${h}" ${(S.remindHour ?? 19) === h ? 'selected' : ''}>${pad(h)}:00</option>`).join('')}</select></label>` : ''}` : ''}
       <label><span>Ljudeffekter</span><input type="checkbox" id="setSound" ${S.sound ? 'checked' : ''}></label>
+      ${'vibrate' in navigator ? `<label><span>Vibrationer</span><input type="checkbox" id="setHaptic" ${S.haptic !== false ? 'checked' : ''}></label>` : ''}
       ${AUDIO_ROOT ? `<label><span>Bakgrundsljud i kvarteren</span><input type="checkbox" id="setAmb" ${S.amb !== false ? 'checked' : ''}></label>` : ''}
       <label><span>Taluppgifter (mikrofon)${SR ? '' : ' – stöds inte här'}</span><input type="checkbox" id="setSpeak" ${S.speak && !S.speakBroken ? 'checked' : ''} ${SR ? '' : 'disabled'}></label>
       ${AUDIO_ROOT && 'caches' in window ? `<button class="row-b" id="offAudio">⬇️ Ljud offline <small class="muted" id="offInfo"></small></button>` : ''}
@@ -856,6 +887,7 @@ function renderProfile() {
   $('#buyF').onclick = () => { S.ecus -= 50; S.freezes++; save(); toast('🧊 Svitfrysning köpt'); renderProfile(); };
   $('#buyH').onclick = () => { S.ecus -= 80; S.hearts = HEART_MAX; save(); toast('❤️ Fullt med hjärtan'); renderProfile(); };
   $('#setSound').onchange = e => { S.sound = e.target.checked; save(); };
+  const shp = $("#setHaptic"); if (shp) shp.onchange = e => { S.haptic = e.target.checked; save(); if (S.haptic) buzz(30); };
   const sa = $('#setAmb'); if (sa) sa.onchange = e => { S.amb = e.target.checked; save(); if (!S.amb) setAmbience(null); };
   const sp = $('#setPush'); if (sp) sp.onchange = async e => { if (e.target.checked) { if (!(await enablePush())) e.target.checked = false; } else await disablePush(); renderProfile(); };
   const sh = $('#setHour'); if (sh) sh.onchange = e => { S.remindHour = +e.target.value; save(); toast(`🔔 Påminnelse kl. ${pad(S.remindHour)}:00 de dagar du inte har övat`); };
@@ -1126,7 +1158,7 @@ function renderEx() {
   L.checked = false;
   const pct = Math.round(L.done / L.total * 100);
   app.innerHTML = `<div class="lesson">
-    <div class="ltop"><button class="x" id="quit" aria-label="Avsluta">✕</button><div class="pbar big"><i style="width:${pct}%"></i></div>${livesHtml()}</div>
+    <div class="ltop"><button class="x" id="quit" aria-label="Avsluta">✕</button><div class="pbar big ${L.combo >= 10 ? 'hot2' : L.combo >= 5 ? 'hot' : ''}"><i style="width:${pct}%"></i></div>${livesHtml()}</div>
     <div class="crumb">${esc(crumbText())} <span>· Uppgift ${Math.min(L.done + 1, L.total)} av ${L.total}</span></div>
     ${L.combo >= 3 ? `<div class="combo">🔥 ${L.combo} i rad!</div>` : ''}
     <div class="lbody" id="lbody"></div>
@@ -1149,7 +1181,7 @@ function onCheck() {
 function showFeedback(r) {
   L.checked = true;
   const ex = L.queue[L.i];
-  chime(r.ok);
+  chime(r.ok, r.ok ? L.combo + 1 : 0);
   trackAnswer(ex, r.ok);
   if (r.ok && ex.type === 'tiles') { S.built = S.built || {}; S.built[builtKey(ex, ex.listen)] = 1; }
   if (r.ok) { L.done++; L.combo++; L.maxCombo = Math.max(L.maxCombo, L.combo); }
@@ -1253,16 +1285,24 @@ function finish(completed) {
   }
   save();
   const mm = Math.floor(secs / 60), ss = pad(secs % 60);
-  app.innerHTML = `<div class="result">
-    <div class="res-char">${ART.character(char, mood)}</div>
-    <h1>${title}</h1>${extra}
+  const perfect = xp && L.mistakes === 0 && L.total > 0;
+  const crownN = L.kind === 'lesson' ? crownsOf(lessonAt(L.u, L.l).id) : 0;
+  app.innerHTML = `<div class="result ${xp ? 'win' : ''}">
+    <div class="res-char ${xp ? 'cheer' : ''}">${ART.character(char, mood)}</div>
+    ${crownN ? `<div class="res-crown">${'👑'.repeat(crownN)}<small>${crownN >= 3 ? 'Mästrad!' : `Nivå ${crownN} av 3`}</small></div>` : ''}
+    <h1>${title}</h1>${perfect ? '<div class="res-badge">✨ Utan fel!</div>' : ''}${extra}
     ${xp ? `<div class="res-grid">
-      <div class="res-c y"><small>XP</small><b>+${xp}</b></div>
-      <div class="res-c g"><small>Träffsäkerhet</small><b>${acc}%</b></div>
+      <div class="res-c y"><small>XP</small><b id="resXp">+${xp}</b></div>
+      <div class="res-c g"><small>Rätt</small><b>${acc}%</b></div>
       <div class="res-c b"><small>Tid</small><b>${mm}:${ss}</b></div></div>` : ''}
     ${L.maxCombo >= 5 ? `<p class="muted">Bästa serie: ${L.maxCombo} rätt i rad 🔥</p>` : ''}
     <button class="btn primary wide" id="cont">Fortsätt</button></div>`;
-  if (xp) confetti();
+  if (xp) {
+    confetti(); fx.fanfare();
+    setTimeout(() => countUp($('#resXp'), xp), 450);
+    if (crownN) setTimeout(fx.crown, 300);
+    if (perfect) setTimeout(fx.perfect, 1500);
+  }
   $('#cont').onclick = () => {
     if (streakInfo && streakInfo.extended) showStreak(streakInfo); else { L = null; go('home'); }
   };
@@ -1270,12 +1310,15 @@ function finish(completed) {
 function showStreak(si) {
   const days = ['M', 'T', 'O', 'T', 'F', 'L', 'S'], today = (new Date().getDay() + 6) % 7;
   app.innerHTML = `<div class="result streak-s">
-    <div class="flame">🔥</div><h1 class="big-n">${si.streak}</h1><h2>${si.streak === 1 ? 'dag i rad – din svit har börjat!' : 'dagar i rad!'}</h2>
+    <div class="flame grow">🔥</div><h1 class="big-n" id="stN">${Math.max(0, si.streak - 1)}</h1>
+    ${[7, 30, 50, 100, 365].includes(si.streak) ? `<div class="res-badge big">🏅 ${si.streak} dagar – en milstolpe!</div>` : ''}<h2>${si.streak === 1 ? 'dag i rad – din svit har börjat!' : 'dagar i rad!'}</h2>
     <div class="week">${days.map((d, i) => `<div class="wd ${i === today ? 'now' : i < today && i > today - si.streak ? 'lit' : ''}"><span>${d}</span><i>${i <= today && i > today - si.streak ? '✓' : ''}</i></div>`).join('')}</div>
     ${si.usedFreeze ? `<p class="muted">🧊 En svitfrysning räddade din svit.</p>` : ''}
     ${si.gotFreeze ? `<p class="unlock">🧊 Du fick en gratis svitfrysning!</p>` : ''}
     <p class="muted">${si.streak === 1 ? 'Kom tillbaka i morgon för att bygga vidare!' : 'Fantastiskt – fortsätt så i morgon också!'}</p>
     <button class="btn primary wide" id="cont">Fortsätt</button></div>`;
+  const big = [7, 30, 50, 100, 365].includes(si.streak);
+  setTimeout(() => { const n = $('#stN'); if (n) { n.textContent = si.streak; n.classList.add('bump'); } fx.streak(big); if (big) { confetti(); setTimeout(confetti, 700); } }, 700);
   $('#cont').onclick = () => { L = null; go('home'); };
 }
 function confetti() {
@@ -2023,4 +2066,4 @@ if ('serviceWorker' in navigator) window.addEventListener('load', () => navigato
 boot();
 
 // För test
-window.__psc = { get S() { return S; }, get L() { return L; }, get wa() { return { st: actx?.state, playing: !!curSrc, n: bufCache.size }; }, say: (t, o) => say(t, false, o || {}), get amb() { return ambCur?.id || null; }, get LM() { return LM; }, COURSE, STORIES, renderEx: () => renderEx(), conjCheck: (e, o) => conj(e.vb, e.t, e.i).includes(o), conjAns: e => conj(e.vb, e.t, e.i)[0] };
+window.__psc = { get S() { return S; }, get L() { return L; }, get wa() { return { st: actx?.state, playing: !!curSrc, n: bufCache.size }; }, say: (t, o) => say(t, false, o || {}), get amb() { return ambCur?.id || null; }, get LM() { return LM; }, COURSE, STORIES, renderEx: () => renderEx(), finish: c => finish(c), showStreak: s => showStreak(s), conjCheck: (e, o) => conj(e.vb, e.t, e.i).includes(o), conjAns: e => conj(e.vb, e.t, e.i)[0] };

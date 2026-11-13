@@ -501,3 +501,23 @@ body[data-tod="night"] .scene svg .lamp-glow { filter: blur(2px); }
 .hint-b { padding: 7px 12px; border-radius: 12px; border: 2px solid var(--line); background: #fff; font-weight: 700; font-size: .9rem; }
 .hint-b:disabled { opacity: .4; }
 .hint-t { font-size: 1.05rem; letter-spacing: .04em; color: var(--blue-d); font-weight: 500; }
+
+/* Firande */
+.pbar.big.hot i { background: linear-gradient(90deg, #6f9a5b, #f2c46d); box-shadow: 0 0 10px rgba(242, 196, 109, .8); }
+.pbar.big.hot2 i { background: linear-gradient(90deg, #f2c46d, #e0742c); box-shadow: 0 0 14px rgba(224, 116, 44, .8); animation: glow 1s ease-in-out infinite alternate; }
+@keyframes glow { to { filter: brightness(1.15); } }
+.result.win .res-c { animation: rise .45s both; }
+.result.win .res-c:nth-child(2) { animation-delay: .15s; }
+.result.win .res-c:nth-child(3) { animation-delay: .3s; }
+@keyframes rise { from { opacity: 0; transform: translateY(18px) scale(.9); } to { opacity: 1; transform: none; } }
+.res-char.cheer { animation: pop .5s, hop .7s ease-in-out .5s 2; }
+@keyframes hop { 50% { transform: translateY(-14px) rotate(-3deg); } }
+.res-crown { font-size: 2.2rem; line-height: 1; margin-bottom: 6px; animation: crownIn .7s cubic-bezier(.2, 1.6, .4, 1) .25s both; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.res-crown small { font-size: .8rem; font-weight: 700; color: var(--butter-d); }
+@keyframes crownIn { from { opacity: 0; transform: translateY(-60px) scale(.3) rotate(-30deg); } to { opacity: 1; transform: none; } }
+.res-badge { display: inline-block; margin: 4px 0 6px; padding: 6px 14px; border-radius: 99px; background: #fff4d6; border: 2px solid var(--butter); color: var(--butter-d); font-weight: 700; animation: pop .5s 1.5s both; }
+.res-badge.big { font-size: 1.05rem; animation-delay: .9s; }
+.flame.grow { animation: flameGrow 1.2s cubic-bezier(.2, 1.4, .4, 1) both, bob 2s ease-in-out infinite 1.2s; }
+@keyframes flameGrow { 0% { transform: scale(.4); filter: saturate(.3); } 55% { transform: scale(.75); } 70% { transform: scale(1.25); filter: saturate(1.4); } 100% { transform: scale(1); filter: none; } }
+.big-n.bump { animation: pop .5s; }
+@media (prefers-reduced-motion: reduce) { .result.win .res-c, .res-char.cheer, .res-crown, .res-badge, .flame.grow, .pbar.big.hot2 i { animation: none !important; } }
