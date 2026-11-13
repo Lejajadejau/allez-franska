@@ -301,3 +301,29 @@ textarea:focus, input:focus { outline: none; border-color: #8db3d4; }
 .fin { text-align: center; padding: 20px; margin-top: 14px; }
 .fin h2 { margin: 6px 0; }
 .weak { font-family: 'Nunito', sans-serif; font-size: .65rem; font-weight: 900; color: var(--bad); background: var(--bad-bg); padding: 1px 6px; border-radius: 99px; vertical-align: middle; }
+
+/* Lyssningssamtal */
+.node.story { width: 58px; height: 54px; border-radius: 18px; font-size: 1.5rem; }
+.node.story.open { background: #8a6fb5; box-shadow: 0 6px 0 #67508c; }
+.node.story.done { background: #b9a6dc; box-shadow: 0 6px 0 #8a6fb5; }
+.story-lbl { font-size: .72rem; font-weight: 900; color: #67508c; margin-top: 8px; text-transform: uppercase; letter-spacing: .05em; }
+.txt-t { font-family: 'Fraunces', serif; font-weight: 800; padding: 4px 9px; border-radius: 10px; border: 2px solid var(--line); color: var(--ink2); }
+.txt-t.on { background: #e6f0f9; border-color: #8db3d4; color: var(--blue-d); }
+.cast { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 0 0 12px; }
+.cast-p { display: flex; flex-direction: column; align-items: center; font-size: .75rem; font-weight: 800; color: var(--ink2); }
+.cast-p .dl-av { width: 52px; }
+.cast-and { font-family: 'Fraunces', serif; font-size: 1.4rem; color: var(--ink2); }
+.b-av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; color: #fff; background: #5b8fa8; border: 2px solid var(--ink); flex: none; }
+.b-av.f { background: #d97f8f; }
+.cast-p .b-av { width: 52px; height: 52px; font-size: 1.3rem; margin-bottom: 4px; }
+.sdlg { display: flex; flex-direction: column; gap: 10px; }
+.sline { display: flex; flex-direction: column; gap: 2px; }
+.spk { font-size: .7rem; font-weight: 900; color: var(--ink2); text-transform: uppercase; letter-spacing: .04em; }
+.fr-t.masked { filter: blur(5px); user-select: none; }
+.dl.in { animation: pop .3s; }
+.sq { padding: 14px; margin-top: 14px; }
+.sq h3 { margin: 4px 0 12px; font-size: 1.15rem; }
+.opt.right { border-color: #9cc77f; background: var(--ok-bg); box-shadow: 0 4px 0 #9cc77f; }
+.opt.wrongo { border-color: #e79a86; background: var(--bad-bg); box-shadow: 0 4px 0 #e79a86; }
+.sq-fb { margin-top: 10px; }
+.okc { color: var(--ok); } .badc { color: var(--bad); }

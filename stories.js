@@ -1,0 +1,281 @@
+// Lyssningssamtal ("histoires") – två per kvarter, efter lektion 2 och 4.
+// Pedagogik: lyssna först, bara kända ord plus något enstaka nytt som går att förstå av sammanhanget,
+// frågor under samtalets gång (på svenska i A1, på enkel franska från A2), och en replik att säga själv.
+// w: 'a' = kvarterets figur, 'b' = den andra personen. qs.at = frågan visas efter den repliken.
+
+export const STORIES = {
+  boulangerie: [
+    {
+      id: 'sb1', after: 1, title: 'Un client poli', sv: 'En artig kund',
+      cast: { a: { name: 'Madame Brioche', char: 'brioche', g: 'f' }, b: { name: 'Monsieur Martin', g: 'm' } },
+      lines: [
+        { w: 'a', fr: 'Bonjour, monsieur !', sv: 'God dag, herrn!' },
+        { w: 'b', fr: 'Bonjour, madame ! Une baguette, merci.', sv: 'God dag, frun! En baguette, tack.' },
+        { w: 'a', fr: 'Oui ! Et un croissant ?', sv: 'Ja! Och en croissant?' },
+        { w: 'b', fr: 'Non, merci. Une tarte !', sv: 'Nej tack. En paj!' },
+        { w: 'a', fr: "Voilà. C'est une baguette et une tarte.", sv: 'Varsågod. Det är en baguette och en paj.' },
+        { w: 'b', fr: 'Merci, madame. Au revoir !', sv: 'Tack, frun. Hej då!' },
+        { w: 'a', fr: 'Au revoir, monsieur !', sv: 'Hej då, herrn!' },
+      ],
+      qs: [
+        { at: 3, q: 'Vill kunden ha en croissant?', o: ['Ja', 'Nej'], a: 1 },
+        { at: 4, q: 'Vad köper kunden?', o: ['En baguette och en paj', 'En croissant och en tårta', 'Bara bröd'], a: 0 },
+      ],
+      speak: 5,
+    },
+    {
+      id: 'sb2', after: 3, title: 'Ça fait combien ?', sv: 'Hur mycket blir det?',
+      cast: { a: { name: 'Madame Brioche', char: 'brioche', g: 'f' }, b: { name: 'Léa', g: 'f' } },
+      lines: [
+        { w: 'b', fr: "Bonjour, madame. Je voudrais trois croissants, s'il vous plaît.", sv: 'God dag. Jag skulle vilja ha tre croissanter, tack.' },
+        { w: 'a', fr: 'Trois croissants… Et avec ceci ?', sv: 'Tre croissanter… Något mer?' },
+        { w: 'b', fr: 'Un pain au chocolat aussi.', sv: 'Ett chokladbröd också.' },
+        { w: 'a', fr: 'Très bien. Ça fait cinq euros.', sv: 'Mycket bra. Det blir fem euro.' },
+        { w: 'b', fr: 'Voilà dix euros.', sv: 'Här är tio euro.' },
+        { w: 'a', fr: 'Et voilà cinq euros. Merci !', sv: 'Och här är fem euro. Tack!' },
+        { w: 'b', fr: 'Merci ! Au revoir, madame !', sv: 'Tack! Hej då!' },
+      ],
+      qs: [
+        { at: 0, q: 'Hur många croissanter vill Léa ha?', o: ['Två', 'Tre', 'Fem'], a: 1 },
+        { at: 3, q: 'Hur mycket blir det?', o: ['Tre euro', 'Fem euro', 'Tio euro'], a: 1 },
+        { at: 5, q: 'Hur mycket får Léa tillbaka?', o: ['Fem euro', 'Två euro', 'Ingenting'], a: 0 },
+      ],
+      speak: 0,
+    },
+  ],
+  marche: [
+    {
+      id: 'sm1', after: 1, title: 'Les fraises de Monsieur Poireau', sv: 'Jordgubbarna',
+      cast: { a: { name: 'Monsieur Poireau', char: 'poireau', g: 'm' }, b: { name: 'Madame Lenoir', g: 'f' } },
+      lines: [
+        { w: 'a', fr: "Bonjour, madame ! J'ai des fraises et des bananes.", sv: 'God dag! Jag har jordgubbar och bananer.' },
+        { w: 'b', fr: "Bonjour ! J'aime les fraises.", sv: 'God dag! Jag tycker om jordgubbar.' },
+        { w: 'a', fr: 'Et les tomates ? Les carottes ?', sv: 'Och tomaterna? Morötterna?' },
+        { w: 'b', fr: "Je voudrais des carottes, s'il vous plaît.", sv: 'Jag skulle vilja ha morötter, tack.' },
+        { w: 'a', fr: 'Voilà ! Et une salade ?', sv: 'Varsågod! Och en sallad?' },
+        { w: 'b', fr: "Non, merci. C'est tout.", sv: 'Nej tack. Det är allt.' },
+      ],
+      qs: [
+        { at: 1, q: 'Vad tycker kvinnan om?', o: ['Bananer', 'Jordgubbar', 'Tomater'], a: 1 },
+        { at: 5, q: 'Vad köper hon inte?', o: ['Morötter', 'Sallad'], a: 1 },
+      ],
+      speak: 3,
+    },
+    {
+      id: 'sm2', after: 3, title: "Oh là là, c'est cher !", sv: 'Det är dyrt!',
+      cast: { a: { name: 'Monsieur Poireau', char: 'poireau', g: 'm' }, b: { name: 'Monsieur Martin', g: 'm' } },
+      lines: [
+        { w: 'a', fr: "Bonjour ! Les pommes rouges sont belles aujourd'hui !", sv: 'God dag! De röda äpplena är fina i dag!' },
+        { w: 'b', fr: 'Combien coûte le kilo ?', sv: 'Vad kostar kilot?' },
+        { w: 'a', fr: 'Six euros le kilo.', sv: 'Sex euro kilot.' },
+        { w: 'b', fr: "Six euros ? Oh là là, c'est cher !", sv: 'Sex euro? Oj, det är dyrt!' },
+        { w: 'a', fr: 'Les pommes vertes : trois euros le kilo.', sv: 'De gröna äpplena: tre euro kilot.' },
+        { w: 'b', fr: 'Très bien ! Deux kilos de pommes vertes.', sv: 'Mycket bra! Två kilo gröna äpplen.' },
+        { w: 'a', fr: 'Ça fait six euros. Merci !', sv: 'Det blir sex euro. Tack!' },
+      ],
+      qs: [
+        { at: 2, q: 'Vad kostar de röda äpplena?', o: ['Tre euro kilot', 'Sex euro kilot', 'Två euro kilot'], a: 1 },
+        { at: 5, q: 'Vad köper mannen?', o: ['Röda äpplen', 'Gröna äpplen', 'Päron'], a: 1 },
+        { at: 6, q: 'Hur mycket betalar han?', o: ['Sex euro', 'Tre euro', 'Nio euro'], a: 0 },
+      ],
+      speak: 3,
+    },
+  ],
+  tram: [
+    {
+      id: 'st1', after: 1, title: 'Le tram de neuf heures', sv: 'Spårvagnen klockan nio',
+      cast: { a: { name: 'Monsieur Rémi', char: 'conducteur', g: 'm' }, b: { name: 'Léa', g: 'f' } },
+      lines: [
+        { w: 'b', fr: 'Pardon, monsieur. Quelle heure est-il ?', sv: 'Ursäkta. Vad är klockan?' },
+        { w: 'a', fr: 'Il est huit heures et demie.', sv: 'Klockan är halv nio.' },
+        { w: 'b', fr: 'Le tram pour la gare part à quelle heure ?', sv: 'Vilken tid går spårvagnen till stationen?' },
+        { w: 'a', fr: 'À neuf heures. Vous avez un ticket ?', sv: 'Klockan nio. Har ni en biljett?' },
+        { w: 'b', fr: "Non. Un ticket, s'il vous plaît.", sv: 'Nej. En biljett, tack.' },
+        { w: 'a', fr: 'Voilà. Deux euros. Bon voyage !', sv: 'Varsågod. Två euro. Trevlig resa!' },
+      ],
+      qs: [
+        { at: 1, q: 'Vad är klockan?', o: ['Halv nio', 'Halv åtta', 'Åtta'], a: 0 },
+        { at: 3, q: 'När går spårvagnen till stationen?', o: ['Klockan åtta', 'Klockan nio', 'Klockan tio'], a: 1 },
+        { at: 5, q: 'Vad kostar biljetten?', o: ['En euro', 'Två euro', 'Fem euro'], a: 1 },
+      ],
+      speak: 4,
+    },
+    {
+      id: 'st2', after: 3, title: 'Où est le port ?', sv: 'Var är hamnen?',
+      cast: { a: { name: 'Monsieur Rémi', char: 'conducteur', g: 'm' }, b: { name: 'en turist', g: 'f' } },
+      lines: [
+        { w: 'b', fr: "Excusez-moi, où est le port ? C'est loin ?", sv: 'Ursäkta, var är hamnen? Är det långt?' },
+        { w: 'a', fr: "Non, c'est près. Allez tout droit.", sv: 'Nej, det är nära. Gå rakt fram.' },
+        { w: 'b', fr: 'Tout droit… et après ?', sv: 'Rakt fram… och sedan?' },
+        { w: 'a', fr: 'Après la boulangerie, à gauche.', sv: 'Efter bageriet, till vänster.' },
+        { w: 'b', fr: 'À gauche ? Pas à droite ?', sv: 'Till vänster? Inte till höger?' },
+        { w: 'a', fr: 'Non, à gauche ! Le marché est à droite.', sv: 'Nej, till vänster! Torget ligger till höger.' },
+        { w: 'b', fr: 'Merci beaucoup, monsieur !', sv: 'Tack så mycket!' },
+      ],
+      qs: [
+        { at: 1, q: 'Är det långt till hamnen?', o: ['Ja, mycket långt', 'Nej, det är nära'], a: 1 },
+        { at: 3, q: 'Var ska turisten svänga?', o: ['Till höger efter bageriet', 'Till vänster efter bageriet', 'Till vänster efter torget'], a: 1 },
+        { at: 5, q: 'Vad ligger till höger?', o: ['Torget', 'Hamnen', 'Stationen'], a: 0 },
+      ],
+      speak: 1,
+    },
+  ],
+  police: [
+    {
+      id: 'sp1', after: 1, title: "J'ai perdu mon chien !", sv: 'Den borttappade hunden',
+      cast: { a: { name: 'Konstapel Lefèvre', char: 'lefevre', g: 'm' }, b: { name: 'Madame Lenoir', g: 'f' } },
+      lines: [
+        { w: 'b', fr: "Au secours ! J'ai perdu mon chien !", sv: 'Hjälp! Jag har tappat bort min hund!' },
+        { w: 'a', fr: 'Où, madame ?', sv: 'Var då?' },
+        { w: 'b', fr: 'Au marché, ce matin.', sv: 'På torget, i morse.' },
+        { w: 'a', fr: 'Il est grand ou petit ?', sv: 'Är den stor eller liten?' },
+        { w: 'b', fr: "Il est petit et blanc. Il s'appelle Biscuit.", sv: 'Den är liten och vit. Den heter Biscuit.' },
+        { w: 'a', fr: 'Un petit chien blanc… Il est là, avec Monsieur Poireau !', sv: 'En liten vit hund… Den är här, hos Monsieur Poireau!' },
+        { w: 'b', fr: "Biscuit ! Merci, monsieur l'agent !", sv: 'Biscuit! Tack, konstapeln!' },
+      ],
+      qs: [
+        { at: 2, q: 'Où est-ce que la dame a perdu son chien ?', o: ['Au marché', 'À la gare', 'Au port'], a: 0 },
+        { at: 4, q: 'Comment est le chien ?', o: ['Grand et noir', 'Petit et blanc', 'Petit et noir'], a: 1 },
+        { at: 5, q: 'Avec qui est le chien ?', o: ['Madame Brioche', 'Monsieur Poireau', 'Gaspard'], a: 1 },
+      ],
+      speak: 0,
+    },
+    {
+      id: 'sp2', after: 3, title: 'Le voleur au chapeau bleu', sv: 'Tjuven med den blå hatten',
+      cast: { a: { name: 'Konstapel Lefèvre', char: 'lefevre', g: 'm' }, b: { name: 'Monsieur Martin', g: 'm' } },
+      lines: [
+        { w: 'b', fr: "Monsieur l'agent ! Un homme a pris mon téléphone !", sv: 'Konstapeln! En man tog min telefon!' },
+        { w: 'a', fr: 'Où ?', sv: 'Var?' },
+        { w: 'b', fr: 'Ce matin, dans le tram.', sv: 'I morse, i spårvagnen.' },
+        { w: 'a', fr: 'Il est comment, cet homme ?', sv: 'Hur ser han ut, den här mannen?' },
+        { w: 'b', fr: 'Il est grand. Il porte un manteau noir et un chapeau bleu.', sv: 'Han är lång. Han har en svart rock och en blå hatt.' },
+        { w: 'a', fr: "Un chapeau bleu… J'ai vu cet homme au port !", sv: 'En blå hatt… Jag såg den mannen i hamnen!' },
+        { w: 'b', fr: 'Au port ? Allons-y !', sv: 'I hamnen? Vi går dit!' },
+      ],
+      qs: [
+        { at: 2, q: "Où est-ce que l'homme a pris le téléphone ?", o: ['Au marché', 'Dans le tram', 'À la boulangerie'], a: 1 },
+        { at: 4, q: "Qu'est-ce que le voleur porte ?", o: ['Un manteau noir et un chapeau bleu', 'Une robe rouge', 'Un pantalon blanc'], a: 0 },
+        { at: 5, q: "Où est-ce que l'agent a vu le voleur ?", o: ['À la gare', 'Au port', 'Au café'], a: 1 },
+      ],
+      speak: 4,
+    },
+  ],
+  port: [
+    {
+      id: 'sh1', after: 1, title: 'Du poisson pour le dîner', sv: 'Fisk till middagen',
+      cast: { a: { name: 'Gaspard', char: 'gaspard', g: 'm' }, b: { name: 'Madame Brioche', g: 'f' } },
+      lines: [
+        { w: 'b', fr: 'Bonjour, Gaspard ! Quel temps fait-il sur la mer ?', sv: 'Hej, Gaspard! Hur är vädret på havet?' },
+        { w: 'a', fr: 'Il fait beau, mais il y a du vent.', sv: 'Det är fint väder, men det blåser.' },
+        { w: 'b', fr: "Tu as des poissons aujourd'hui ?", sv: 'Har du fisk i dag?' },
+        { w: 'a', fr: 'Oui, beaucoup de poissons ! Et deux crabes.', sv: 'Ja, massor av fisk! Och två krabbor.' },
+        { w: 'b', fr: "Je voudrais trois poissons, s'il te plaît.", sv: 'Jag skulle vilja ha tre fiskar, tack.' },
+        { w: 'a', fr: 'Voilà, madame. Pour la boulangerie ?', sv: 'Varsågod. Till bageriet?' },
+        { w: 'b', fr: 'Non, pour le dîner ! Merci, Gaspard.', sv: 'Nej, till middagen! Tack, Gaspard.' },
+      ],
+      qs: [
+        { at: 1, q: 'Quel temps fait-il ?', o: ['Il pleut', 'Il fait beau, mais il y a du vent', 'Il fait très froid'], a: 1 },
+        { at: 4, q: 'Combien de poissons veut Madame Brioche ?', o: ['Deux', 'Trois', 'Cinq'], a: 1 },
+        { at: 6, q: "Les poissons, c'est pour quoi ?", o: ['Pour la boulangerie', 'Pour le dîner', 'Pour les mouettes'], a: 1 },
+      ],
+      speak: 4,
+    },
+    {
+      id: 'sh2', after: 3, title: 'Ce week-end à la plage', sv: 'I helgen på stranden',
+      cast: { a: { name: 'Gaspard', char: 'gaspard', g: 'm' }, b: { name: 'Léa', g: 'f' } },
+      lines: [
+        { w: 'b', fr: "Gaspard, qu'est-ce que tu vas faire ce week-end ?", sv: 'Gaspard, vad ska du göra i helgen?' },
+        { w: 'a', fr: 'Samedi, je vais pêcher. Et toi ?', sv: 'På lördag ska jag fiska. Och du?' },
+        { w: 'b', fr: 'Je vais nager à la plage avec mon frère.', sv: 'Jag ska simma på stranden med min bror.' },
+        { w: 'a', fr: 'Attention, dimanche il va pleuvoir !', sv: 'Se upp, på söndag kommer det att regna!' },
+        { w: 'b', fr: 'Alors, nous allons nager samedi.', sv: 'Då simmar vi på lördag.' },
+        { w: 'a', fr: "Bonne idée ! Hier, il a fait très beau, j'ai pêché vingt poissons.", sv: 'Bra idé! I går var det jättefint väder, jag fick tjugo fiskar.' },
+        { w: 'b', fr: "Vingt ? C'était super !", sv: 'Tjugo? Vad bra!' },
+      ],
+      qs: [
+        { at: 1, q: "Qu'est-ce que Gaspard va faire samedi ?", o: ['Nager', 'Pêcher', 'Manger au café'], a: 1 },
+        { at: 3, q: 'Quel temps va-t-il faire dimanche ?', o: ['Il va pleuvoir', 'Il va faire chaud', 'Il va faire beau'], a: 0 },
+        { at: 5, q: 'Combien de poissons Gaspard a-t-il pêché hier ?', o: ['Dix', 'Vingt', 'Trente'], a: 1 },
+      ],
+      speak: 4,
+    },
+  ],
+  ecole: [
+    {
+      id: 'se1', after: 1, title: 'La photo de famille', sv: 'Familjefotot',
+      cast: { a: { name: 'Madame Dubois', char: 'dubois', g: 'f' }, b: { name: 'Lucas', g: 'm' } },
+      lines: [
+        { w: 'a', fr: "Lucas, qui est-ce sur la photo ?", sv: 'Lucas, vilka är det på fotot?' },
+        { w: 'b', fr: "C'est ma famille. Voici mon père et ma mère.", sv: 'Det är min familj. Här är min pappa och min mamma.' },
+        { w: 'a', fr: 'Et ce petit garçon ?', sv: 'Och den lilla pojken?' },
+        { w: 'b', fr: "C'est mon frère. Il a six ans.", sv: 'Det är min bror. Han är sex år.' },
+        { w: 'a', fr: 'Tu as une sœur aussi ?', sv: 'Har du en syster också?' },
+        { w: 'b', fr: "Non, mais j'ai un chien !", sv: 'Nej, men jag har en hund!' },
+      ],
+      qs: [
+        { at: 1, q: 'Qui est sur la photo ?', o: ['La classe', 'La famille de Lucas', 'Les amis de Lucas'], a: 1 },
+        { at: 3, q: 'Quel âge a le frère ?', o: ['Six ans', 'Dix ans', 'Douze ans'], a: 0 },
+        { at: 5, q: 'Est-ce que Lucas a une sœur ?', o: ['Oui', 'Non'], a: 1 },
+      ],
+      speak: 1,
+    },
+    {
+      id: 'se2', after: 3, title: 'La journée de Lucas', sv: 'Lucas dag',
+      cast: { a: { name: 'Madame Dubois', char: 'dubois', g: 'f' }, b: { name: 'Lucas', g: 'm' } },
+      lines: [
+        { w: 'a', fr: "Lucas, raconte ta journée, s'il te plaît.", sv: 'Lucas, berätta om din dag.' },
+        { w: 'b', fr: "D'abord, je me lève à sept heures.", sv: 'Först går jag upp klockan sju.' },
+        { w: 'a', fr: 'Et ensuite ?', sv: 'Och sedan?' },
+        { w: 'b', fr: 'Ensuite, je prends le petit-déjeuner et je prends le bus.', sv: 'Sedan äter jag frukost och tar bussen.' },
+        { w: 'a', fr: "Et après l'école ?", sv: 'Och efter skolan?' },
+        { w: 'b', fr: "Après l'école, je joue au foot. Je déteste les devoirs !", sv: 'Efter skolan spelar jag fotboll. Jag hatar läxor!' },
+        { w: 'a', fr: "Ah, Lucas… Les devoirs, c'est important !", sv: 'Ack, Lucas… Läxor är viktiga!' },
+      ],
+      qs: [
+        { at: 1, q: 'À quelle heure Lucas se lève-t-il ?', o: ['À six heures', 'À sept heures', 'À huit heures'], a: 1 },
+        { at: 3, q: "Comment va-t-il à l'école ?", o: ['À vélo', 'En bus', 'En tram'], a: 1 },
+        { at: 5, q: "Qu'est-ce que Lucas déteste ?", o: ['Le foot', 'Les devoirs', 'Le petit-déjeuner'], a: 1 },
+      ],
+      speak: 3,
+    },
+  ],
+  cafe: [
+    {
+      id: 'sc1', after: 1, title: 'Une table pour deux', sv: 'Ett bord för två',
+      cast: { a: { name: 'Monsieur Olivier', char: 'olivier', g: 'm' }, b: { name: 'Madame Dubois', g: 'f' } },
+      lines: [
+        { w: 'a', fr: 'Bonjour, madame ! Vous désirez ?', sv: 'God dag! Vad får det lov att vara?' },
+        { w: 'b', fr: "Je vais prendre un thé au citron, s'il vous plaît.", sv: 'Jag tar ett te med citron, tack.' },
+        { w: 'a', fr: 'Et pour votre ami ?', sv: 'Och till er vän?' },
+        { w: 'b', fr: 'Un chocolat chaud. Et vous avez des gâteaux ?', sv: 'En varm choklad. Och har ni kakor?' },
+        { w: 'a', fr: 'Je vous recommande la tarte aux fraises. Elle est délicieuse !', sv: 'Jag rekommenderar jordgubbspajen. Den är utsökt!' },
+        { w: 'b', fr: "Parfait, deux tartes. Et l'addition, s'il vous plaît.", sv: 'Perfekt, två pajer. Och notan, tack.' },
+      ],
+      qs: [
+        { at: 1, q: "Qu'est-ce que Madame Dubois prend ?", o: ['Un café', 'Un thé au citron', 'Un chocolat chaud'], a: 1 },
+        { at: 4, q: "Qu'est-ce que Monsieur Olivier recommande ?", o: ['La tarte aux fraises', 'Le gâteau au chocolat', 'Les croissants'], a: 0 },
+        { at: 5, q: 'Combien de tartes commande-t-elle ?', o: ['Une', 'Deux', 'Trois'], a: 1 },
+      ],
+      speak: 1,
+    },
+    {
+      id: 'sc2', after: 3, title: 'Le grand débat', sv: 'Den stora diskussionen',
+      cast: { a: { name: 'Monsieur Olivier', char: 'olivier', g: 'm' }, b: { name: 'Gaspard', g: 'm' } },
+      lines: [
+        { w: 'b', fr: 'Olivier, à mon avis, ton café est trop cher !', sv: 'Olivier, jag tycker att ditt kaffe är för dyrt!' },
+        { w: 'a', fr: "Trop cher ? Mais c'est le meilleur café de la ville !", sv: 'För dyrt? Men det är stadens bästa kaffe!' },
+        { w: 'b', fr: 'Le café de la gare est moins cher.', sv: 'Kaffet på stationen är billigare.' },
+        { w: 'a', fr: 'Moins cher, oui. Mais mon café est plus délicieux !', sv: 'Billigare, ja. Men mitt kaffe är godare!' },
+        { w: 'b', fr: "Je ne suis pas d'accord… mais j'aime bien ton chocolat chaud.", sv: 'Jag håller inte med… men jag gillar din varma choklad.' },
+        { w: 'a', fr: "Si tu veux, je t'offre un chocolat chaud.", sv: 'Om du vill bjuder jag dig på en varm choklad.' },
+        { w: 'b', fr: 'Ce serait super ! Merci, mon ami.', sv: 'Det vore toppen! Tack, min vän.' },
+      ],
+      qs: [
+        { at: 0, q: "Selon Gaspard, le café d'Olivier est…", o: ['trop cher', 'délicieux', 'moins cher'], a: 0 },
+        { at: 2, q: 'Quel café est moins cher ?', o: ['Le café de la gare', 'Le café du port', "Le café d'Olivier"], a: 0 },
+        { at: 5, q: "Qu'est-ce qu'Olivier offre à Gaspard ?", o: ['Un thé', 'Un chocolat chaud', 'Une tarte'], a: 1 },
+      ],
+      speak: 6,
+    },
+  ],
+};

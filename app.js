@@ -1,6 +1,7 @@
 import { COURSE, FUTURE } from './content.js';
 import { CONFIG } from './config.js';
 import * as ART from './art.js';
+import { STORIES } from './stories.js';
 
 // ================= Hjälpfunktioner =================
 const $ = (s, r = document) => r.querySelector(s);
@@ -69,13 +70,17 @@ function loadVoices() {
   const fr = vs.filter(v => /^fr/i.test(v.lang));
   frVoice = fr.find(v => /fr[-_]FR/i.test(v.lang) && /google|amélie|amelie|thomas|audrey|marie|premium|enhanced/i.test(v.name))
     || fr.find(v => /fr[-_]FR/i.test(v.lang)) || fr[0] || null;
+  frVoices = [frVoice, ...fr.filter(v => v !== frVoice)].filter(Boolean);
 }
+let frVoices = [];
 if ('speechSynthesis' in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
-function say(text, slow = false) {
-  if (!('speechSynthesis' in window)) return;
+function say(text, slow = false, opt = {}) {
+  if (!('speechSynthesis' in window)) { opt.onend?.(); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text.replace(/\|/g, ' '));
-  u.lang = 'fr-FR'; if (frVoice) u.voice = frVoice; u.rate = slow ? 0.55 : 0.9;
+  u.lang = 'fr-FR'; const v = opt.voice || frVoice; if (v) u.voice = v;
+  u.rate = slow ? 0.55 : (opt.rate || 0.9); u.pitch = opt.pitch || 1;
+  if (opt.onend) { let done = false; const f = () => { if (!done) { done = true; opt.onend(); } }; u.onend = f; u.onerror = f; setTimeout(f, 1500 + text.length * 90); }
   speechSynthesis.speak(u);
 }
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -331,6 +336,13 @@ function renderHome() {
         ${c ? `<div class="crowns">${'♛'.repeat(c)}</div>` : ''}
       </div>`;
       if (l === 1) html += `<div class="char-side ${off > 0 ? 'left' : 'right'}">${ART.character(un.character)}<span>${un.charName}</span></div>`;
+      (STORIES[un.id] || []).forEach((st, si) => {
+        if (st.after !== l) return;
+        const sOpen = unitUnlocked(u) && crownsOf(le.id) >= 1, sDone = (S.stories || {})[st.id];
+        html += `<div class="node-row story-row" style="transform:translateX(${-off / 2}px)">
+          <button class="node story ${sOpen ? 'open' : ''} ${sDone ? 'done' : ''}" data-story="${u}:${si}" aria-label="Lyssna: ${esc(st.title)}">${!sOpen ? '🔒' : sDone ? '🎧' : '🎧'}</button>
+          <div class="story-lbl">${sDone ? '✓ ' : ''}Lyssna</div></div>`;
+      });
     });
     html += `</div></section>${ART.tramDivider()}`;
   });
@@ -341,7 +353,8 @@ function renderHome() {
   });
   shell(html);
 
-  $$('.node').forEach(n => n.onclick = () => nodeSheet(+n.dataset.u, +n.dataset.l));
+  $$('.node:not(.story)').forEach(n => n.onclick = () => nodeSheet(+n.dataset.u, +n.dataset.l));
+  $$('.node.story').forEach(n => n.onclick = () => { const [u, si] = n.dataset.story.split(':').map(Number); storySheet(u, si); });
   $$('[data-guide]').forEach(b => b.onclick = () => guide(+b.dataset.guide));
   $$('[data-jump]').forEach(b => b.onclick = () => jumpSheet(+b.dataset.jump));
   const p = $('#practice'); if (p) p.onclick = startPractice;
@@ -750,7 +763,7 @@ function renderEx() {
 function setReady(r) { cur.ready = r; const b = $('#check'); if (b && !L.checked) b.disabled = !r; }
 const PRAISE = ['Très bien !', 'Parfait !', 'Bravo !', 'Super !', 'Excellent !', 'Magnifique !'];
 function onCheck() {
-  if (!L || L.over) return;
+  if (!L || L.over || L.kind === 'story') return;
   if (L.checked) { next(); return; }
   if (!cur.ready) return;
   const r = cur.check();
@@ -813,6 +826,12 @@ function finish(completed) {
     S.lessonsDone++; if (L.mistakes === 0) S.perfect++;
     title = 'Leçon terminée !';
     if (L.l === COURSE[L.u].lessons.length - 1 && S.crowns[le.id] === 1) extra = `<p class="unlock">🚋 Nytt kvarter upplåst!</p>`;
+  } else if (L.kind === 'story') {
+    char = COURSE[L.u].character;
+    S.stories = S.stories || {}; const first = !S.stories[L.st.id]; S.stories[L.st.id] = true;
+    xp = 10 + (L.mistakes === 0 ? 5 : 0); ecus = first ? 10 : 3;
+    title = 'Histoire terminée !';
+    if (L.mistakes === 0 && L.total) extra = '<p class="unlock">🎧 Du förstod allt!</p>';
   } else if (L.kind === 'practice') {
     xp = 5; ecus = 2; if (S.hearts < HEART_MAX) { S.hearts++; extra = '<p class="unlock">❤️ Du fick tillbaka ett hjärta!</p>'; }
     title = 'Bien joué !';
@@ -876,6 +895,120 @@ const speakerBtns = text => `<button class="say-b" data-say="${esc(text)}" aria-
 function bindSay(root) {
   $$('[data-say]', root).forEach(b => b.onclick = e => { e.stopPropagation(); say(b.dataset.say); });
   $$('[data-slow]', root).forEach(b => b.onclick = e => { e.stopPropagation(); say(b.dataset.slow, true); });
+}
+
+// ================= Lyssningssamtal =================
+function storySheet(u, si) {
+  const un = COURSE[u], st = STORIES[un.id][si], le = un.lessons[st.after];
+  if (!(unitUnlocked(u) && crownsOf(le.id) >= 1)) { toast(`Klara lektionen "${le.title}" först 🔒`); return; }
+  const done = (S.stories || {})[st.id];
+  sheet(`<div class="ns-head" style="--uc:${un.color}"><small>${un.fr} · Lyssna</small><h2>${esc(st.title)}</h2><p>${esc(st.sv)}</p></div>
+    <p>Lyssna på samtalet mellan <b>${esc(st.cast.a.name)}</b> och <b>${esc(st.cast.b.name)}</b> och svara på frågorna under tiden.</p>
+    <p class="muted small">Tips: lyssna först – visa texten bara om du behöver. ${un.level === 'A1' ? 'Texten dyker upp när repliken är uppläst.' : 'Tryck på en replik för att se texten.'}</p>
+    <button class="btn primary" id="go">${done ? 'Lyssna igen +10 XP' : 'Starta +10 XP'}</button><button class="btn ghost" data-close>Stäng</button>`,
+    (w, close) => $('#go', w).onclick = () => { close(); startStory(u, si); });
+}
+function storyVoice(st, who) {
+  const c = st.cast[who], other = st.cast[who === 'a' ? 'b' : 'a'];
+  const voice = who === 'a' ? frVoices[0] : (frVoices[1] || frVoices[0]);
+  let pitch = c.g === 'f' ? 1.15 : 0.85;
+  if (who === 'b' && (!frVoices[1]) && c.g === other.g) pitch *= c.g === 'f' ? 1.12 : 0.88;
+  return { voice, pitch, rate: who === 'a' ? 0.88 : 0.95 };
+}
+function startStory(u, si) {
+  const st = STORIES[COURSE[u].id][si];
+  L = { kind: 'story', u, st, i: 0, q: null, total: st.qs.length, mistakes: 0, combo: 0, maxCombo: 0, start: Date.now(), spoke: false, showAll: !!S.storyText };
+  const un = COURSE[u], a = st.cast.a, b = st.cast.b;
+  app.innerHTML = `<div class="lesson story-player">
+    <div class="ltop"><button class="x" id="quit" aria-label="Avsluta">✕</button><div class="pbar big"><i style="width:0%"></i></div>
+      <button class="txt-t ${L.showAll ? 'on' : ''}" id="txtT" aria-label="Visa all text">Aa</button></div>
+    <div class="lbody">
+      <p class="kind">Lyssna · ${esc(un.fr)}</p><h2 class="q">${esc(st.title)}</h2>
+      <div class="cast"><div class="cast-p"><div class="dl-av">${ART.character(a.char)}</div><span>${esc(a.name)}</span></div>
+        <span class="cast-and">&</span><div class="cast-p"><div class="b-av ${b.g}">${esc(b.name[0].toUpperCase())}</div><span>${esc(b.name)}</span></div></div>
+      <div class="sdlg" id="sdlg"></div><div id="sq"></div>
+    </div>
+    <div class="lfoot" id="lfoot"><button class="btn primary wide" id="snext">▶ Starta samtalet</button></div></div>`;
+  $('#quit').onclick = quitLesson;
+  $('#snext').onclick = storyNext;
+  $('#txtT').onclick = () => { L.showAll = !L.showAll; S.storyText = L.showAll; save(false); $('#txtT').classList.toggle('on', L.showAll); $$('.sline .fr-t').forEach(t => t.classList.toggle('masked', !L.showAll && !t.dataset.rev)); };
+}
+function storyNext() {
+  const st = L.st;
+  if (L.q) return;
+  $('#sq').innerHTML = '';
+  if (L.i < st.lines.length) {
+    const idx = L.i++, ln = st.lines[idx], un = COURSE[L.u];
+    const isA = ln.w === 'a', c = st.cast[ln.w];
+    const row = document.createElement('div'); row.className = `dl ${isA ? 'npc' : 'you'} in`;
+    row.innerHTML = `${isA ? `<div class="dl-av">${ART.character(c.char)}</div>` : ''}
+      <button class="dl-b sline"><span class="spk">${esc(c.name)}</span><span class="fr-t ${L.showAll ? '' : 'masked'}">${esc(ln.fr)}</span><span class="dl-sv">${esc(ln.sv)}</span></button>
+      ${isA ? '' : `<div class="b-av ${c.g}">${esc(c.name[0].toUpperCase())}</div>`}`;
+    $('#sdlg').appendChild(row);
+    row.scrollIntoView({ block: 'end', behavior: 'smooth' });
+    const btn = row.querySelector('.sline'), txt = row.querySelector('.fr-t');
+    const reveal = () => { txt.dataset.rev = '1'; txt.classList.remove('masked'); };
+    const v = storyVoice(st, ln.w);
+    let t;
+    btn.onclick = () => { if (txt.classList.contains('masked')) reveal(); say(ln.fr, false, v); };
+    btn.addEventListener('pointerdown', () => { t = setTimeout(() => btn.classList.add('tr'), 400); });
+    ['pointerup', 'pointerleave'].forEach(e => btn.addEventListener(e, () => { clearTimeout(t); btn.classList.remove('tr'); }));
+    btn.addEventListener('contextmenu', e => e.preventDefault());
+    const nb = $('#snext'); nb.disabled = true; nb.textContent = '🔊 …';
+    say(ln.fr, false, { ...v, onend: () => {
+      if (un.level === 'A1') reveal();
+      const q = st.qs.find(q => q.at === idx);
+      if (q) storyQuestion(q); else { nb.disabled = false; nb.textContent = L.i < st.lines.length ? 'Fortsätt ▶' : 'Klart ▶'; }
+    } });
+    $('.ltop .pbar i').style.width = Math.round(L.i / st.lines.length * 100) + '%';
+    return;
+  }
+  if (!L.spoke && st.speak != null && canSpeak()) { L.spoke = true; storySpeak(st.lines[st.speak]); return; }
+  finish(true);
+}
+function storyQuestion(q) {
+  L.q = q;
+  const nb = $('#snext'); nb.disabled = true; nb.textContent = 'Svara på frågan';
+  const box = $('#sq');
+  box.innerHTML = `<div class="sq card"><p class="kind">Fråga</p><h3>${esc(q.q)}</h3><div class="opts">${q.o.map((o, i) => `<button class="opt" data-i="${i}"><span class="num">${i + 1}</span>${esc(o)}</button>`).join('')}</div><div class="sq-fb"></div></div>`;
+  box.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  $$('.opt', box).forEach(b => b.onclick = () => {
+    if (!L.q) return;
+    const ok = +b.dataset.i === q.a;
+    chime(ok);
+    b.classList.add(ok ? 'right' : 'wrongo');
+    if (!ok) { L.mistakes++; $$('.opt', box)[q.a].classList.add('right'); L.combo = 0; } else { L.combo++; L.maxCombo = Math.max(L.maxCombo, L.combo); }
+    $('.sq-fb', box).innerHTML = ok ? `<b class="okc">✓ ${rnd(PRAISE)}</b>` : `<b class="badc">✗ Rätt svar: ${esc(q.o[q.a])}</b> <span class="muted small">– tryck på replikerna för att lyssna igen.</span>`;
+    L.q = null; nb.disabled = false; nb.textContent = L.i < L.st.lines.length ? 'Fortsätt ▶' : 'Klart ▶';
+  });
+}
+function storySpeak(ln) {
+  const nb = $('#snext'); nb.disabled = true; nb.textContent = 'Säg repliken';
+  const box = $('#sq');
+  box.innerHTML = `<div class="sq card"><p class="kind">Din tur</p><h3>Säg repliken högt</h3>
+    <div class="bubble"><button class="say-b" data-say="${esc(ln.fr)}">🔊</button><span class="fr-t">${esc(ln.fr)}</span></div>
+    <button class="mic" id="mic">🎙️<span>Tryck och prata</span></button><p class="heard muted" id="heard"></p>
+    <button class="link" id="skip">Hoppa över</button></div>`;
+  bindSay(box); box.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  const done = () => { nb.disabled = false; nb.textContent = 'Klart ▶'; };
+  $('#skip', box).onclick = () => { done(); finish(true); };
+  const target = norm(ln.fr, false).split(' ');
+  $('#mic', box).onclick = () => {
+    try {
+      const rec = new SR(); rec.lang = 'fr-FR'; rec.maxAlternatives = 3;
+      $('#mic', box).classList.add('rec');
+      rec.onresult = e => {
+        const alts = [...e.results[0]].map(a => a.transcript);
+        const best = Math.max(...alts.map(t => { const s = new Set(norm(t, false).split(' ')); return target.filter(w => s.has(w)).length / target.length; }));
+        chime(best >= 0.6);
+        $('#heard', box).innerHTML = best >= 0.6 ? `<b class="okc">✓ ${rnd(PRAISE)}</b> Jag hörde: ”${esc(alts[0])}”` : `Nästan! Jag hörde: ”${esc(alts[0])}” – prova igen eller fortsätt.`;
+        done();
+      };
+      rec.onerror = e => { if (['not-allowed', 'service-not-allowed', 'language-not-supported'].includes(e.error)) { S.speakBroken = true; save(false); } $('#heard', box).textContent = 'Mikrofonen fungerade inte – tryck på Klart.'; done(); };
+      rec.onend = () => $('#mic', box)?.classList.remove('rec');
+      rec.start();
+    } catch { done(); }
+  };
 }
 
 // Mikrofonen fungerar inte: byt till lyssningsövning och förklara varför
@@ -1065,7 +1198,7 @@ function bindAccents(root) {
   });
 }
 document.addEventListener('keydown', e => {
-  if (!L || !$('.lesson')) return;
+  if (!L || !$('.lesson') || L.kind === 'story') return;
   if (e.key === 'Enter' && document.activeElement?.tagName !== 'TEXTAREA') { e.preventDefault(); onCheck(); }
   if (/^[1-4]$/.test(e.key) && document.activeElement?.tagName !== 'TEXTAREA') { const o = $$('.opt, .pcard')[+e.key - 1]; o?.click(); }
 });
@@ -1086,4 +1219,4 @@ if ('serviceWorker' in navigator) window.addEventListener('load', () => navigato
 boot();
 
 // För test
-window.__psc = { get S() { return S; }, get L() { return L; }, COURSE, renderEx: () => renderEx() };
+window.__psc = { get S() { return S; }, get L() { return L; }, COURSE, STORIES, renderEx: () => renderEx() };
