@@ -99,7 +99,7 @@ function loadVoices() {
 let frVoices = [];
 if ('speechSynthesis' in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
 // Inspelade röster: fraser i audio/ph, samtal i audio/stories. Talsyntes som reserv.
-const AUDIO_ROOT = CONFIG.SUPABASE_URL ? CONFIG.SUPABASE_URL + '/storage/v1/object/public/audio/' : '';
+const AUDIO_ROOT = CONFIG.SUPABASE_URL ? CONFIG.SUPABASE_URL + '/storage/v1/object/public/audio/v2/' : '';
 let phraseAudio = null;
 function stopAudio() { playTok++; stopWA(); try { phraseAudio?.pause(); storyAudio?.pause(); } catch {} }
 // ===== Jämn ljudnivå =====
