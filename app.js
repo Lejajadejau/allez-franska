@@ -3,6 +3,7 @@ import { CONFIG } from './config.js';
 import * as ART from './art.js';
 import { STORIES } from './stories.js';
 import { PH } from './audiomap.js';
+import { SERIAL } from './serial.js';
 
 // ================= Hjälpfunktioner =================
 const $ = (s, r = document) => r.querySelector(s);
@@ -115,6 +116,7 @@ const DEFAULT = {
   crowns: {}, sound: true, speak: true, speakPausedUntil: 0, goalBonusDay: '', cheersSent: {},
   lessonsDone: 0, perfect: 0, updatedAt: 0, welcomed: false,
   q: null, questsDone: 0, chestDay: '', ach: {}, practiceDone: 0,
+  serial: { done: {}, lastNewDay: '' }, amb: true,
 };
 let S = null, userId = 'local', sb = null, offline = false;
 const storeKey = () => 'psc_state_' + userId;
@@ -382,7 +384,7 @@ function shell(inner) {
   $$('[data-stat]').forEach(b => b.onclick = () => statInfo(b.dataset.stat));
 }
 function timeOfDay() { const h = new Date().getHours(); return h >= 21 || h < 6 ? 'night' : h < 9 ? 'morning' : h >= 17 ? 'evening' : 'day'; }
-function go(v) { view = v; tick(); document.body.dataset.tod = timeOfDay(); ({ home: renderHome, league: renderLeague, profile: renderProfile })[v](); window.scrollTo(0, 0); }
+function go(v) { view = v; tick(); if (v !== 'home') setAmbience(null); document.body.dataset.tod = timeOfDay(); ({ home: renderHome, league: renderLeague, profile: renderProfile })[v](); window.scrollTo(0, 0); }
 
 function statInfo(kind) {
   if (kind === 'streak') {
@@ -411,6 +413,7 @@ function renderHome() {
   const pct = Math.min(100, Math.round(S.dayXp / S.dailyGoal * 100));
   html += `<div class="goal card"><div><b>Dagens mål</b><span class="muted"> ${S.dayXp}/${S.dailyGoal} XP</span></div><div class="pbar"><i style="width:${pct}%"></i></div>${pct >= 100 ? '<span class="goal-ok">✓</span>' : ''}</div>`;
   html += questCard();
+  html += serialCard();
   const curU = cur ? cur[0] : -1;
   html += `<details class="card mapcard" ${S.mapOpen ? 'open' : ''}><summary><b>🗺️ Stadskartan</b><span class="muted small"> ${COURSE.filter((_, u) => unitDone(u)).length} av ${COURSE.length} kvarter klara</span></summary>
     ${ART.townMap(COURSE.map((un, u) => ({ fr: un.fr, color: un.color, state: unitDone(u) ? 'done' : u === curU ? 'cur' : unitUnlocked(u) ? 'open' : 'locked' })))}
@@ -418,7 +421,7 @@ function renderHome() {
   if (doneLessons().length) {
     const weak = weakCount();
     const label = S.hearts < HEART_MAX ? '🏋️ Öva och få tillbaka ❤️' : weak ? `🏋️ Repetera ${weak} ${weak === 1 ? 'svårt ord eller mening' : 'svåra ord och meningar'}` : '🏋️ Snabbövning (+5 XP)';
-    html += `<button class="practice-chip" id="practice">${label}</button>`;
+    html += `<div class="chip-row"><button class="practice-chip" id="practice">${label}</button><button class="practice-chip listen-chip" id="listenB">🎧 Lyssna fritt</button></div>`;
   }
 
   COURSE.forEach((un, u) => {
@@ -462,6 +465,9 @@ function renderHome() {
   $$('.map-pin').forEach(p => p.addEventListener('click', () => { const sec = $$('.unit')[+p.dataset.unit]; if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
   $$('[data-jump]').forEach(b => b.onclick = () => jumpSheet(+b.dataset.jump));
   const p = $('#practice'); if (p) p.onclick = startPractice;
+  const lb = $('#listenB'); if (lb) lb.onclick = () => startListen();
+  const sc = $('#serialB'); if (sc) sc.onclick = serialSheet;
+  watchAmbience();
   const curEl = $('.node.cur'); if (curEl && !renderHome.scrolled) { renderHome.scrolled = true; setTimeout(() => curEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 150); }
 
   if (!S.welcomed) welcome();
@@ -679,8 +685,10 @@ function renderProfile() {
     <div class="card settings">
       ${sb && userId !== 'local' ? `<label><span>Påminnelser kl. 19 och pepp</span><input type="checkbox" id="setPush" ${S.push ? 'checked' : ''}></label>` : ''}
       <label><span>Ljudeffekter</span><input type="checkbox" id="setSound" ${S.sound ? 'checked' : ''}></label>
+      ${AUDIO_ROOT ? `<label><span>Bakgrundsljud i kvarteren</span><input type="checkbox" id="setAmb" ${S.amb !== false ? 'checked' : ''}></label>` : ''}
       <label><span>Taluppgifter (mikrofon)${SR ? '' : ' – stöds inte här'}</span><input type="checkbox" id="setSpeak" ${S.speak && !S.speakBroken ? 'checked' : ''} ${SR ? '' : 'disabled'}></label>
       ${AUDIO_ROOT && 'caches' in window ? `<button class="row-b" id="offAudio">⬇️ Ljud offline <small class="muted" id="offInfo"></small></button>` : ''}
+      ${doneLessons().length ? '<button class="row-b" id="listenP">🎧 Lyssna fritt (handsfree)</button>' : ''}
       <button class="row-b" id="words">📚 Mina ord (${wordsLearned()})</button>
       <button class="row-b" id="editP">✏️ Byt namn och figur</button>
       <button class="row-b" id="testVoice">🔊 Testa den franska rösten</button>
@@ -692,10 +700,12 @@ function renderProfile() {
   $('#buyF').onclick = () => { S.ecus -= 50; S.freezes++; save(); toast('🧊 Svitfrysning köpt'); renderProfile(); };
   $('#buyH').onclick = () => { S.ecus -= 80; S.hearts = HEART_MAX; save(); toast('❤️ Fullt med hjärtan'); renderProfile(); };
   $('#setSound').onchange = e => { S.sound = e.target.checked; save(); };
+  const sa = $('#setAmb'); if (sa) sa.onchange = e => { S.amb = e.target.checked; save(); if (!S.amb) setAmbience(null); };
   const sp = $('#setPush'); if (sp) sp.onchange = async e => { if (e.target.checked) { if (!(await enablePush())) e.target.checked = false; } else disablePush(); };
   $('#setSpeak').onchange = e => { S.speak = e.target.checked; S.speakPausedUntil = 0; S.speakBroken = false; save(); };
   $('#editP').onclick = () => renderOnboard(true);
   $('#words').onclick = wordList;
+  const lp = $('#listenP'); if (lp) lp.onclick = () => startListen();
   const oa = $('#offAudio'); if (oa) { offlineInfo().then(t => { const i = $('#offInfo'); if (i) i.textContent = t; }); oa.onclick = offlineSheet; }
   $('#testVoice').onclick = () => say('Bonjour ! Je voudrais un croissant, s\'il vous plaît.');
   const lo = $('#logout'); if (lo) lo.onclick = async () => { await sb.auth.signOut(); localStorage.removeItem('psc_last_user'); location.reload(); };
@@ -711,6 +721,8 @@ function allAudioUrls(units) {
     const un = COURSE[u]; addTxt(un.welcome); un.tips.forEach(t => addTxt(t.fr));
     un.lessons.forEach(l => { l.words.forEach(w => addTxt(w.fr)); l.sentences.forEach(x => addTxt(x.fr)); l.story?.lines.forEach(x => addTxt(x.fr)); });
     (STORIES[un.id] || []).forEach(st => st.lines.forEach((_, i) => urls.add(lineUrl(st, i))));
+    SERIAL.eps.filter(ep => ep.u === u).forEach(st => st.lines.forEach((_, i) => urls.add(lineUrl(st, i))));
+    urls.add(ambUrl(un.id));
   });
   return [...urls];
 }
@@ -883,13 +895,14 @@ function startTest(u) {
   startSession({ kind: 'test', u, queue: mixedExercises([...Array(u).keys()], 12), lives: 3 });
 }
 function startSession(o) {
+  setAmbience(o.u != null ? COURSE[o.u].id : null);
   L = { ...o, i: 0, done: 0, total: o.queue.length, mistakes: 0, combo: 0, maxCombo: 0, start: Date.now(), requeued: new Set(), checked: false };
   renderEx();
 }
 function quitLesson() {
   sheet(`<div class="welcome">${ART.character('brioche', 'sad')}</div><h2>Vill du verkligen sluta?</h2><p>Du förlorar framstegen i den här lektionen.</p>
     <button class="btn primary" data-close>Fortsätt lära</button><button class="btn ghost" id="q">Avsluta</button>`,
-    (w, close) => $('#q', w).onclick = () => { close(); speechSynthesis?.cancel(); storyAudio?.pause(); L = null; save(); go('home'); });
+    (w, close) => $('#q', w).onclick = () => { close(); speechSynthesis?.cancel(); storyAudio?.pause(); setAmbience(null); L = null; save(); go('home'); });
 }
 function livesHtml() {
   if (L.kind === 'test') return `<div class="lh">${'💛'.repeat(Math.max(0, L.lives))}${'🤍'.repeat(3 - Math.max(0, L.lives))}</div>`;
@@ -969,6 +982,7 @@ function outOfHearts() {
 }
 
 function finish(completed) {
+  setAmbience(null);
   const secs = Math.round((Date.now() - L.start) / 1000);
   const acc = Math.round(100 * Math.max(0, L.total - L.mistakes) / L.total);
   let xp = 0, ecus = 0, title = '', extra = '', mood = 'happy', char = 'brioche';
@@ -979,6 +993,13 @@ function finish(completed) {
     S.lessonsDone++; if (L.mistakes === 0) S.perfect++;
     title = 'Leçon terminée !';
     if (L.l === COURSE[L.u].lessons.length - 1 && S.crowns[le.id] === 1 && L.u < COURSE.length - 1) extra = `<p class="unlock">🚋 Nytt kvarter upplåst!</p>`;
+  } else if (L.kind === 'story' && L.serial) {
+    char = COURSE[L.u].character;
+    const sr = ser(), first = !sr.done[L.st.id]; sr.done[L.st.id] = true; if (first) sr.lastNewDay = dayKey();
+    xp = 10 + (L.mistakes === 0 ? 5 : 0); ecus = first ? 15 : 3;
+    title = 'Épisode terminé !';
+    const ni = SERIAL.eps.indexOf(L.st) + 1;
+    extra = first ? (ni < SERIAL.eps.length ? `<p class="unlock">🗝️ Nästa avsnitt kommer i morgon${unitUnlocked(SERIAL.eps[ni].u) ? '' : ` – när du har kommit till ${esc(COURSE[SERIAL.eps[ni].u].fr)}`}.</p>` : '<p class="unlock">🗼 Mysteriet är löst! Fyren lyser igen.</p>') : '';
   } else if (L.kind === 'story') {
     char = COURSE[L.u].character;
     S.stories = S.stories || {}; const first = !S.stories[L.st.id]; S.stories[L.st.id] = true;
@@ -1089,26 +1110,29 @@ function playLine(st, idx, onend) {
   if (p && p.catch) p.catch(() => { if (!done) tts(); });
 }
 function storyVoice(st, who) {
-  const c = st.cast[who], other = st.cast[who === 'a' ? 'b' : 'a'];
-  const voice = who === 'a' ? frVoices[0] : (frVoices[1] || frVoices[0]);
-  let pitch = c.g === 'f' ? 1.15 : 0.85;
-  if (who === 'b' && (!frVoices[1]) && c.g === other.g) pitch *= c.g === 'f' ? 1.12 : 0.88;
-  return { voice, pitch, rate: who === 'a' ? 0.88 : 0.95 };
+  const keys = Object.keys(st.cast), k = Math.max(0, keys.indexOf(who)), c = st.cast[who];
+  const voice = frVoices.length ? frVoices[k % frVoices.length] : null;
+  const pitch = (c.g === 'f' ? 1.15 : 0.85) * (frVoices.length > k ? 1 : [1, 1.1, 0.9, 1.05][k % 4]);
+  return { voice, pitch, rate: k === 0 ? 0.88 : 0.95 };
 }
-function startStory(u, si) {
-  const st = STORIES[COURSE[u].id][si];
-  L = { kind: 'story', u, st, i: 0, q: null, total: st.qs.length, mistakes: 0, combo: 0, maxCombo: 0, start: Date.now(), spoke: false, showAll: !!S.storyText };
-  const un = COURSE[u], a = st.cast.a, b = st.cast.b;
+function startStory(u, si) { startStoryObj(STORIES[COURSE[u].id][si], u, false); }
+function castHtml(st) {
+  const ps = Object.values(st.cast).filter(c => !c.narr).map(c => `<div class="cast-p">${c.char ? `<div class="dl-av">${ART.character(c.char)}</div>` : `<div class="b-av ${c.g}">${esc(c.name[0].toUpperCase())}</div>`}<span>${esc(c.name)}</span></div>`);
+  return ps.length === 2 ? ps.join('<span class="cast-and">&</span>') : ps.join('');
+}
+function startStoryObj(st, u, serial) {
+  setAmbience(COURSE[u].id);
+  L = { kind: 'story', serial, u, st, i: 0, q: null, total: st.qs.length, mistakes: 0, combo: 0, maxCombo: 0, start: Date.now(), spoke: false, showAll: !!S.storyText };
+  const un = COURSE[u];
   app.innerHTML = `<div class="lesson story-player">
     <div class="ltop"><button class="x" id="quit" aria-label="Avsluta">✕</button><div class="pbar big"><i style="width:0%"></i></div>
       <button class="txt-t ${L.showAll ? 'on' : ''}" id="txtT" aria-label="Visa all text">Aa</button></div>
     <div class="lbody">
-      <p class="kind">Lyssna · ${esc(un.fr)}</p><h2 class="q">${esc(st.title)}</h2>
-      <div class="cast"><div class="cast-p"><div class="dl-av">${ART.character(a.char)}</div><span>${esc(a.name)}</span></div>
-        <span class="cast-and">&</span><div class="cast-p"><div class="b-av ${b.g}">${esc(b.name[0].toUpperCase())}</div><span>${esc(b.name)}</span></div></div>
+      <p class="kind">${serial ? `Följetong · Avsnitt ${SERIAL.eps.indexOf(st) + 1}` : `Lyssna · ${esc(un.fr)}`}</p><h2 class="q">${esc(st.title)}</h2>
+      <div class="cast">${castHtml(st)}</div>
       <div class="sdlg" id="sdlg"></div><div id="sq"></div>
     </div>
-    <div class="lfoot" id="lfoot"><button class="btn primary wide" id="snext">▶ Starta samtalet</button></div></div>`;
+    <div class="lfoot" id="lfoot"><button class="btn primary wide" id="snext">▶ ${serial ? 'Starta avsnittet' : 'Starta samtalet'}</button></div></div>`;
   $('#quit').onclick = quitLesson;
   $('#snext').onclick = storyNext;
   preloadLine(st, 0);
@@ -1120,11 +1144,11 @@ function storyNext() {
   $('#sq').innerHTML = '';
   if (L.i < st.lines.length) {
     const idx = L.i++, ln = st.lines[idx], un = COURSE[L.u];
-    const isA = ln.w === 'a', c = st.cast[ln.w];
-    const row = document.createElement('div'); row.className = `dl ${isA ? 'npc' : 'you'} in`;
+    const c = st.cast[ln.w], isA = !!c.char, nar = !!c.narr;
+    const row = document.createElement('div'); row.className = `dl ${nar ? 'narr' : isA ? 'npc' : 'you'} in`;
     row.innerHTML = `${isA ? `<div class="dl-av">${ART.character(c.char)}</div>` : ''}
-      <button class="dl-b sline"><span class="spk">${esc(c.name)}</span><span class="fr-t ${L.showAll ? '' : 'masked'}">${esc(ln.fr)}</span><span class="dl-sv">${esc(ln.sv)}</span></button>
-      ${isA ? '' : `<div class="b-av ${c.g}">${esc(c.name[0].toUpperCase())}</div>`}`;
+      <button class="dl-b sline">${nar ? '' : `<span class="spk">${esc(c.name)}</span>`}<span class="fr-t ${L.showAll ? '' : 'masked'}">${esc(ln.fr)}</span><span class="dl-sv">${esc(ln.sv)}</span></button>
+      ${isA || nar ? '' : `<div class="b-av ${c.g}">${esc(c.name[0].toUpperCase())}</div>`}`;
     $('#sdlg').appendChild(row);
     row.scrollIntoView({ block: 'end', behavior: 'smooth' });
     const btn = row.querySelector('.sline'), txt = row.querySelector('.fr-t');
@@ -1386,6 +1410,227 @@ document.addEventListener('keydown', e => {
   if (/^[1-4]$/.test(e.key) && document.activeElement?.tagName !== 'TEXTAREA') { const o = $$('.opt, .pcard')[+e.key - 1]; o?.click(); }
 });
 
+// ================= Följetong =================
+const ser = () => (S.serial = S.serial || { done: {}, lastNewDay: '' });
+function epState(i) {
+  const ep = SERIAL.eps[i], s = ser();
+  if (s.done[ep.id]) return 'done';
+  if (i > 0 && !s.done[SERIAL.eps[i - 1].id]) return 'later';
+  if (!unitUnlocked(ep.u)) return 'unit';
+  if (s.lastNewDay === dayKey()) return 'tomorrow';
+  return 'open';
+}
+const nextEp = () => SERIAL.eps.findIndex((_, i) => epState(i) !== 'done');
+function serialCard() {
+  const s = ser(), n = SERIAL.eps.filter(e => s.done[e.id]).length, i = nextEp();
+  let txt, hot = false;
+  if (i < 0) txt = 'Alla avsnitt klara – mysteriet är löst! 🗼';
+  else {
+    const st = epState(i), ep = SERIAL.eps[i];
+    if (st === 'open') { txt = `${n ? 'Nytt avsnitt' : 'Första avsnittet'}: <i>${esc(ep.title)}</i>`; hot = true; }
+    else if (st === 'tomorrow') txt = 'Nästa avsnitt kommer i morgon 🌙';
+    else txt = `Nästa avsnitt utspelar sig i ${esc(COURSE[ep.u].fr)} – ta dig dit först`;
+  }
+  return `<button class="card serialcard ${hot ? 'hot' : ''}" id="serialB"><span class="sc-ic">🗝️</span>
+    <span class="sc-t"><small>Följetong · ${n}/${SERIAL.eps.length}</small><b>${esc(SERIAL.title)}</b><span class="muted small">${txt}</span></span>${hot ? '<span class="sc-new">NY</span>' : ''}</button>`;
+}
+function serialSheet() {
+  const s = ser(), n = SERIAL.eps.filter(e => s.done[e.id]).length;
+  sheet(`<div class="ns-head" style="--uc:#3f5a74"><small>Följetong · ${n} av ${SERIAL.eps.length} avsnitt</small><h2>${esc(SERIAL.title)}</h2><p>${esc(SERIAL.sv)}</p></div>
+    <p class="muted small">${esc(SERIAL.intro)} Ett nytt avsnitt per dag.</p>
+    <div class="ep-list">${SERIAL.eps.map((ep, i) => {
+      const st = epState(i), on = st === 'done' || st === 'open';
+      const why = { later: '', unit: ' · öppnas när du når kvarteret', tomorrow: ' · i morgon' }[st] || '';
+      return `<button class="ep ${st}" data-ep="${i}" ${on ? '' : 'disabled'}><span class="ep-n">${st === 'done' ? '✓' : st === 'open' ? '▶' : '🔒'}</span>
+        <span class="ep-t"><b>${i + 1}. ${on ? esc(ep.title) : '· · ·'}</b><small>${on ? esc(ep.sv) + ' · ' : ''}${esc(COURSE[ep.u].fr)}${why}</small></span></button>`;
+    }).join('')}</div>
+    <button class="btn ghost" data-close>Stäng</button>`,
+    (w, close) => $$('[data-ep]', w).forEach(b => b.onclick = () => { close(); const ep = SERIAL.eps[+b.dataset.ep]; startStoryObj(ep, ep.u, true); }));
+}
+
+// ================= Bakgrundsljud =================
+const ambUrl = id => AUDIO_ROOT ? `${AUDIO_ROOT}amb/${id}.mp3` : '';
+const AMB_VOL = 0.2, AMB_DUCK = 0.05;
+const ambBufs = {};
+let ambCur = null, ambWant = null, ambLast = -1;
+function getCtx() { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); } catch { } return actx; }
+function ambBuffer(id) {
+  if (!ambBufs[id]) ambBufs[id] = fetch(ambUrl(id)).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+    .then(ab => new Promise((res, rej) => getCtx().decodeAudioData(ab, res, rej))).catch(e => { delete ambBufs[id]; throw e; });
+  return ambBufs[id];
+}
+const speakingNow = () => (phraseAudio && !phraseAudio.paused) || (storyAudio && !storyAudio.paused) || ('speechSynthesis' in window && speechSynthesis.speaking);
+const ambTarget = () => speakingNow() ? AMB_DUCK : AMB_VOL;
+async function setAmbience(id) {
+  if (!S || S.amb === false || !AUDIO_ROOT || document.hidden) id = null;
+  ambWant = id;
+  if (ambCur?.id === id) return;
+  const old = ambCur; ambCur = null;
+  if (old) { const t = actx.currentTime; old.gain.gain.cancelScheduledValues(t); old.gain.gain.setTargetAtTime(0, t, 0.35); setTimeout(() => { try { old.src.stop(); } catch { } }, 2000); }
+  if (!id) return;
+  const ctx = getCtx(); if (!ctx) return;
+  let buf; try { buf = await ambBuffer(id); } catch { return; }
+  if (ambWant !== id || ambCur) return;
+  const src = ctx.createBufferSource(), gain = ctx.createGain();
+  src.buffer = buf; src.loop = true; src.loopStart = 0.06; src.loopEnd = Math.max(0.5, buf.duration - 0.06);
+  gain.gain.value = 0; src.connect(gain).connect(ctx.destination); src.start(0, 0.06);
+  ambLast = ambTarget(); gain.gain.setTargetAtTime(ambLast, ctx.currentTime, 0.7);
+  ambCur = { id, src, gain };
+  if (ctx.state === 'suspended') ctx.resume().catch(() => { });
+}
+setInterval(() => {
+  if (!ambCur) return; const t = ambTarget();
+  if (t !== ambLast) { ambLast = t; ambCur.gain.gain.setTargetAtTime(t, actx.currentTime, t < AMB_VOL ? 0.08 : 0.5); }
+}, 150);
+document.addEventListener('pointerdown', () => { const c = actx; if (c && c.state === 'suspended') c.resume().catch(() => { }); }, { passive: true });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { const w = ambWant; setAmbience(null); ambWant = w; }
+  else if (ambWant && !LM) { const w = ambWant; ambWant = null; setAmbience(w); }
+  if (!document.hidden && LM?.playing) lockWake(true);
+});
+let ambIO = null;
+function watchAmbience() {
+  ambIO?.disconnect();
+  if (!('IntersectionObserver' in window)) return;
+  const vis = new Map(); let tmr;
+  ambIO = new IntersectionObserver(es => {
+    es.forEach(e => vis.set(e.target, e.intersectionRatio));
+    clearTimeout(tmr);
+    tmr = setTimeout(() => {
+      if (view !== 'home' || L || LM) return;
+      let best = null, br = 0.5;
+      vis.forEach((r, el) => { if (r > br && el.isConnected) { br = r; best = el; } });
+      setAmbience(best ? best.dataset.scene : null);
+    }, 450);
+  }, { threshold: [0, 0.25, 0.5, 0.75, 1] });
+  $$('.unit:not(.locked):not(.future) .scene[data-scene]').forEach(el => ambIO.observe(el));
+}
+
+// ================= Lyssna fritt (handsfree) =================
+let LM = null, wakeLock = null;
+function listenItems(units) {
+  const seen = new Set(), out = [];
+  doneLessons().filter(x => !units || units.includes(x.u)).forEach(({ u, le }) => {
+    [...le.words, ...le.sentences].forEach(it => {
+      const fr = String(it.fr).replace(/\|/g, ' ').trim();
+      if (seen.has(fr) || (AUDIO_ROOT && !PH[fr])) return;
+      seen.add(fr); out.push({ u, fr, sv: String(it.sv).split('|')[0], e: it.e || '' });
+    });
+  });
+  return out;
+}
+function svVoice() { try { return speechSynthesis.getVoices().find(v => /^sv/i.test(v.lang)) || null; } catch { return null; } }
+function saySv(text, onend) {
+  if (!('speechSynthesis' in window)) { setTimeout(onend, 1800); return; }
+  const vs = speechSynthesis.getVoices(), v = svVoice();
+  if (vs.length && !v) { setTimeout(onend, 1800); return; } // ingen svensk röst: visa bara texten
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text); u.lang = 'sv-SE'; if (v) u.voice = v; u.rate = 0.95;
+  let done = false; const f = () => { if (!done) { done = true; onend(); } };
+  u.onend = f; u.onerror = f; setTimeout(f, 2500 + text.length * 110);
+  speechSynthesis.speak(u);
+}
+async function lockWake(on) {
+  try {
+    if (on && 'wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); }
+    else if (!on && wakeLock) { const w = wakeLock; wakeLock = null; await w.release(); }
+  } catch { }
+}
+function startListen() {
+  setAmbience(null);
+  if (!listenItems(null).length) { toast('Gör en lektion först!'); return; }
+  LM = { units: null, items: [], i: 0, playing: false, tok: 0, slow: !!S.listenSlow, heard: 0 };
+  LM.items = shuffle(listenItems(null));
+  renderListen();
+  if ('mediaSession' in navigator) {
+    const ms = navigator.mediaSession, h = (a, f) => { try { ms.setActionHandler(a, f); } catch { } };
+    h('play', () => lmPlay(true)); h('pause', () => lmPlay(false));
+    h('nexttrack', () => lmJump(1)); h('previoustrack', () => lmJump(-1));
+  }
+}
+function renderListen() {
+  const us = [...new Set(listenItems(null).map(x => x.u))];
+  app.innerHTML = `<div class="lesson listen">
+    <div class="ltop"><button class="x" id="lquit" aria-label="Stäng">✕</button><div class="pbar big"><i id="lpb" style="width:0%"></i></div><div class="lh">🎧</div></div>
+    <div class="lbody">
+      <p class="kind">Lyssna fritt</p>
+      <div class="chips lchips"><button class="chip ${!LM.units ? 'on' : ''}" data-lu="all">Alla kvarter</button>${us.map(u => `<button class="chip ${LM.units?.[0] === u ? 'on' : ''}" data-lu="${u}">${esc(COURSE[u].fr)}</button>`).join('')}</div>
+      <div class="lcard card"><div class="l-e" id="le">🎧</div><div class="l-fr" id="lfr">Tryck på ▶ för att börja</div><div class="l-sv" id="lsv"></div><div class="l-step" id="lstep"></div></div>
+      <p class="muted small center">Franska – paus för att tänka – svenska – franska igen. ${LM.items.length} ord och meningar från dina lektioner.</p>
+      ${isIOS ? '<p class="muted small center">På iPhone kan ljudet stanna om skärmen låses. Appen försöker hålla skärmen tänd medan den spelar.</p>' : ''}
+    </div>
+    <div class="lfoot lctrl">
+      <button class="lc" id="lprev" aria-label="Föregående">⏮</button>
+      <button class="lc play" id="lplay" aria-label="Spela">${LM.playing ? '⏸' : '▶'}</button>
+      <button class="lc" id="lnext" aria-label="Nästa">⏭</button>
+      <button class="lc tempo" id="ltempo">${LM.slow ? '🐢 Lugnt' : '🚶 Normalt'}</button>
+    </div></div>`;
+  $('#lquit').onclick = quitListen;
+  $('#lplay').onclick = () => lmPlay(!LM.playing);
+  $('#lnext').onclick = () => lmJump(1);
+  $('#lprev').onclick = () => lmJump(-1);
+  $('#ltempo').onclick = () => { LM.slow = !LM.slow; S.listenSlow = LM.slow; save(false); $('#ltempo').textContent = LM.slow ? '🐢 Lugnt' : '🚶 Normalt'; };
+  $$('[data-lu]').forEach(b => b.onclick = () => {
+    LM.units = b.dataset.lu === 'all' ? null : [+b.dataset.lu];
+    LM.items = shuffle(listenItems(LM.units)); LM.i = 0;
+    $$('[data-lu]').forEach(x => x.classList.toggle('on', x === b));
+    if (LM.playing) { lmStop(); listenLoop(); } else showListen(LM.items[0], 'idle');
+  });
+}
+function showListen(it, ph) {
+  if (!it || !$('#lfr')) return;
+  $('#le').textContent = it.e || '💬';
+  $('#lfr').textContent = it.fr;
+  $('#lsv').textContent = ph === 'sv' || ph === 'fr2' ? it.sv : '';
+  $('#lstep').textContent = { idle: '', fr: '🔊 Franska', think: '🤔 Vad betyder det?', sv: '🇸🇪 Svenska', fr2: '🔁 Franska igen' }[ph] || '';
+  $('#lpb').style.width = Math.round(LM.i / Math.max(1, LM.items.length) * 100) + '%';
+  if (ph === 'fr' && 'mediaSession' in navigator) {
+    try { navigator.mediaSession.metadata = new MediaMetadata({ title: it.fr, artist: it.sv, album: 'Allez ! – Lyssna fritt' }); } catch { }
+  }
+}
+function lmStop() { LM.tok++; try { phraseAudio?.pause(); } catch { } if ('speechSynthesis' in window) speechSynthesis.cancel(); }
+function lmPlay(on) {
+  if (!LM) return;
+  LM.playing = on; const b = $('#lplay'); if (b) b.textContent = on ? '⏸' : '▶';
+  try { navigator.mediaSession.playbackState = on ? 'playing' : 'paused'; } catch { }
+  lockWake(on);
+  lmStop();
+  if (on) listenLoop();
+}
+function lmJump(d) {
+  if (!LM) return;
+  LM.i = Math.max(0, Math.min(LM.items.length - 1, LM.i + d));
+  lmStop();
+  if (LM.playing) listenLoop(); else showListen(LM.items[LM.i], 'idle');
+}
+const lmWait = (ms, tok) => new Promise(r => setTimeout(() => r(LM && LM.tok === tok), ms));
+const lmDo = (fn, tok) => new Promise(r => { let d = false; const f = () => { if (!d) { d = true; r(LM && LM.tok === tok); } }; fn(f); setTimeout(f, 15000); });
+async function listenLoop() {
+  const tok = ++LM.tok;
+  while (LM && LM.tok === tok && LM.playing) {
+    if (LM.i >= LM.items.length) { LM.items = shuffle(listenItems(LM.units)); LM.i = 0; }
+    const it = LM.items[LM.i], P = LM.slow ? 1.7 : 1;
+    showListen(it, 'fr');
+    if (!await lmDo(cb => say(it.fr, false, { onend: cb }), tok)) return;
+    showListen(it, 'think');
+    if (!await lmWait(2000 * P, tok)) return;
+    showListen(it, 'sv');
+    if (!await lmDo(cb => saySv(it.sv, cb), tok)) return;
+    if (!await lmWait(700 * P, tok)) return;
+    showListen(it, 'fr2');
+    if (!await lmDo(cb => say(it.fr, LM.slow, { onend: cb }), tok)) return;
+    if (!await lmWait(1600 * P, tok)) return;
+    LM.i++; LM.heard++;
+  }
+}
+function quitListen() {
+  if (!LM) return;
+  const heard = LM.heard; lmStop(); LM.playing = false; LM = null; lockWake(false);
+  if ('mediaSession' in navigator) ['play', 'pause', 'nexttrack', 'previoustrack'].forEach(a => { try { navigator.mediaSession.setActionHandler(a, null); } catch { } });
+  if (heard >= 10) { const xp = Math.min(10, Math.floor(heard / 10) * 2); addXp(xp); registerActivity(); save(); toast(`🎧 ${heard} fraser lyssnade · +${xp} XP`); }
+  go('home');
+}
+
 // ================= Start =================
 async function boot() {
   app.innerHTML = `<div class="splash"><h1>Allez !</h1><p>Port-Saint-Clément</p></div>`;
@@ -1402,4 +1647,4 @@ if ('serviceWorker' in navigator) window.addEventListener('load', () => navigato
 boot();
 
 // För test
-window.__psc = { get S() { return S; }, get L() { return L; }, COURSE, STORIES, renderEx: () => renderEx() };
+window.__psc = { get S() { return S; }, get L() { return L; }, get amb() { return ambCur?.id || null; }, get LM() { return LM; }, COURSE, STORIES, renderEx: () => renderEx() };
