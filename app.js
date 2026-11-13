@@ -9,6 +9,7 @@ const SEASONS = [SERIAL, SERIAL2];
 const EPS = SEASONS.flatMap((se, si) => se.eps.map(e => (e.season = si, e)));
 const epNo = ep => SEASONS[ep.season].eps.indexOf(ep) + 1;
 import { SV } from './svmap.js';
+import { VERBS, TENSES, PERSONS, conj, shown, pron } from './verbs.js';
 
 // ================= Hjälpfunktioner =================
 const $ = (s, r = document) => r.querySelector(s);
@@ -52,6 +53,22 @@ function grade(input, answers) {
   for (const v of answers) if (norm(v, false) === norm(a, false)) return { ok: true, note: `Tänk på accenterna: ${v}` };
   for (const v of answers) { const n = norm(v, false); if (n.length > 8 && lev(n, norm(a, false)) <= 1) return { ok: true, note: `Litet stavfel – rätt är: ${v}` }; }
   return { ok: false };
+}
+
+// Visar meningen ord för ord: grönt = rätt, gult = fel accent, rött = saknas eller felstavat
+function diffHtml(input, answer) {
+  const aw = answer.split(/\s+/).filter(Boolean), bw = norm(input).split(' ').filter(Boolean);
+  const A = aw.map(w => norm(w, false)), B = bw.map(w => norm(w, false));
+  const m = A.length, n = B.length, d = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = m - 1; i >= 0; i--) for (let j = n - 1; j >= 0; j--) d[i][j] = A[i] && A[i] === B[j] ? d[i + 1][j + 1] + 1 : Math.max(d[i + 1][j], d[i][j + 1]);
+  const out = []; let i = 0, j = 0;
+  while (i < m) {
+    if (!A[i]) { out.push(esc(aw[i])); i++; continue; }
+    if (j < n && A[i] === B[j]) { out.push(`<span class="${norm(aw[i]) === bw[j] ? 'd-ok' : 'd-acc'}">${esc(aw[i])}</span>`); i++; j++; }
+    else if (j < n && d[i][j + 1] >= d[i + 1][j]) j++;
+    else { out.push(`<span class="d-miss">${esc(aw[i])}</span>`); i++; }
+  }
+  return out.join(' ');
 }
 
 // ================= Ljud och tal =================
@@ -459,7 +476,8 @@ function renderHome() {
   if (doneLessons().length) {
     const weak = weakCount();
     const label = S.hearts < HEART_MAX ? '🏋️ Öva och få tillbaka ❤️' : weak ? `🏋️ Repetera ${weak} ${weak === 1 ? 'svårt ord eller mening' : 'svåra ord och meningar'}` : '🏋️ Snabbövning (+5 XP)';
-    html += `<div class="chip-row"><button class="practice-chip" id="practice">${label}</button><button class="practice-chip listen-chip" id="listenB">🎧 Lyssna fritt</button></div>`;
+    html += `<div class="chip-row"><button class="practice-chip" id="practice">${label}</button><button class="practice-chip listen-chip" id="listenB">🎧 Lyssna fritt</button></div>
+      <div class="chip-row"><button class="practice-chip dict-chip" id="dictB">✍️ Diktamen</button><button class="practice-chip verb-chip" id="verbB">🔤 Verbträning</button></div>`;
   }
 
   COURSE.forEach((un, u) => {
@@ -504,6 +522,8 @@ function renderHome() {
   $$('[data-jump]').forEach(b => b.onclick = () => jumpSheet(+b.dataset.jump));
   const p = $('#practice'); if (p) p.onclick = startPractice;
   const lb = $('#listenB'); if (lb) lb.onclick = () => startListen();
+  const db = $('#dictB'); if (db) db.onclick = startDictation;
+  const vb = $('#verbB'); if (vb) vb.onclick = () => verbSheet();
   const sc = $('#serialB'); if (sc) sc.onclick = () => serialSheet();
   const rv = $('#reviewB'); if (rv) rv.onclick = startReview;
   watchAmbience();
@@ -647,7 +667,7 @@ function pushCard() {
   if (!sb || userId === 'local' || S.push || S.pushDismissed || !doneLessons().length || $('.push-card')) return;
   if (!pushSupported() && !/iphone|ipad|ipod/i.test(navigator.userAgent)) return;
   const el = document.createElement('div'); el.className = 'install card push-card';
-  el.innerHTML = `<span>🔔</span><div>Vill du få en påminnelse kl. 19 när du inte har övat – och se pepp direkt?</div>
+  el.innerHTML = `<span>🔔</span><div>Vill du få en påminnelse de dagar du inte har övat – och se pepp direkt? Tiden väljer du under Profil.</div>
     <button class="btn small primary" id="pOn">Slå på</button><button class="x" aria-label="Stäng">✕</button>`;
   const goal = $('.goal'); goal ? goal.after(el) : $('.main').prepend(el);
   $('.x', el).onclick = () => { S.pushDismissed = true; save(); el.remove(); };
@@ -722,7 +742,8 @@ function renderProfile() {
     </div>
     <h3 class="sub">Inställningar</h3>
     <div class="card settings">
-      ${sb && userId !== 'local' ? `<label><span>Påminnelser kl. 19 och pepp</span><input type="checkbox" id="setPush" ${S.push ? 'checked' : ''}></label>` : ''}
+      ${sb && userId !== 'local' ? `<label><span>Daglig påminnelse och pepp</span><input type="checkbox" id="setPush" ${S.push ? 'checked' : ''}></label>
+        ${S.push ? `<label><span>Påminn mig kl.</span><select id="setHour" class="remind-sel">${Array.from({ length: 16 }, (_, k) => k + 7).map(h => `<option value="${h}" ${(S.remindHour ?? 19) === h ? 'selected' : ''}>${pad(h)}:00</option>`).join('')}</select></label>` : ''}` : ''}
       <label><span>Ljudeffekter</span><input type="checkbox" id="setSound" ${S.sound ? 'checked' : ''}></label>
       ${AUDIO_ROOT ? `<label><span>Bakgrundsljud i kvarteren</span><input type="checkbox" id="setAmb" ${S.amb !== false ? 'checked' : ''}></label>` : ''}
       <label><span>Taluppgifter (mikrofon)${SR ? '' : ' – stöds inte här'}</span><input type="checkbox" id="setSpeak" ${S.speak && !S.speakBroken ? 'checked' : ''} ${SR ? '' : 'disabled'}></label>
@@ -740,7 +761,8 @@ function renderProfile() {
   $('#buyH').onclick = () => { S.ecus -= 80; S.hearts = HEART_MAX; save(); toast('❤️ Fullt med hjärtan'); renderProfile(); };
   $('#setSound').onchange = e => { S.sound = e.target.checked; save(); };
   const sa = $('#setAmb'); if (sa) sa.onchange = e => { S.amb = e.target.checked; save(); if (!S.amb) setAmbience(null); };
-  const sp = $('#setPush'); if (sp) sp.onchange = async e => { if (e.target.checked) { if (!(await enablePush())) e.target.checked = false; } else disablePush(); };
+  const sp = $('#setPush'); if (sp) sp.onchange = async e => { if (e.target.checked) { if (!(await enablePush())) e.target.checked = false; } else await disablePush(); renderProfile(); };
+  const sh = $('#setHour'); if (sh) sh.onchange = e => { S.remindHour = +e.target.value; save(); toast(`🔔 Påminnelse kl. ${pad(S.remindHour)}:00 de dagar du inte har övat`); };
   $('#setSpeak').onchange = e => { S.speak = e.target.checked; S.speakPausedUntil = 0; S.speakBroken = false; save(); };
   $('#editP').onclick = () => renderOnboard(true);
   $('#words').onclick = wordList;
@@ -931,6 +953,51 @@ function startPractice() {
   if (!units.length) { toast('Gör din första lektion först!'); return; }
   startSession({ kind: 'practice', queue: practiceExercises(8) });
 }
+// Diktamen: lyssna på inlärda meningar och skriv dem. Svåra och förfallna meningar kommer först.
+function startDictation() {
+  const today = dayKey(), srs = S.srs || {}, seen = new Set();
+  const pool = practicePool().filter(p => p.s && !seen.has(p.k) && seen.add(p.k));
+  if (!pool.length) { toast('Gör din första lektion först!'); return; }
+  const prio = p => { const it = srs[p.k]; if (!it) return 2 + Math.random(); return ((it.due || today) <= today ? 0 : 4) + it.b - (isWeak(it) ? 1 : 0) + Math.random(); };
+  const queue = pool.map(p => ({ ...p, pr: prio(p) })).sort((a, b) => a.pr - b.pr).slice(0, 8).map(p => ({ type: 'listenType', s: p.s, u: p.u, dict: true }));
+  startSession({ kind: 'practice', dict: true, queue });
+}
+// Verbträning: välj tempus, få 12 böjningar (blandat flerval och skriva själv)
+function verbSheet() {
+  const sel = new Set(S.verbTenses || ['pres', 'pc']);
+  const lvl = S.verbLevel || 'common';
+  const draw = (w) => {
+    $('#vt', w).innerHTML = TENSES.map(t => `<button class="chip ${sel.has(t.id) ? 'on' : ''}" data-t="${t.id}">${esc(t.fr)}<small>${esc(t.sv)}</small></button>`).join('');
+    $$('[data-t]', w).forEach(b => b.onclick = () => { const id = b.dataset.t; sel.has(id) ? sel.size > 1 && sel.delete(id) : sel.add(id); draw(w); });
+  };
+  sheet(`<div class="big-emoji">🔤</div><h2>Verbträning</h2><p class="muted">Välj vilka tempus du vill öva. 28 vanliga verb, 12 frågor per runda.</p>
+    <div class="chips verb-tenses" id="vt"></div>
+    <div class="seg small-seg"><button data-l="common" class="${lvl === 'common' ? 'on' : ''}">De 10 vanligaste</button><button data-l="all" class="${lvl === 'all' ? 'on' : ''}">Alla 28 verb</button></div>
+    <button class="btn primary" id="vgo">Börja</button><button class="btn ghost" data-close>Stäng</button>`,
+    (w, close) => {
+      draw(w); let l = lvl;
+      $$('[data-l]', w).forEach(b => b.onclick = () => { l = b.dataset.l; $$('[data-l]', w).forEach(x => x.classList.toggle('on', x === b)); });
+      $('#vgo', w).onclick = () => { S.verbTenses = [...sel]; S.verbLevel = l; save(false); close(); startVerbs(); };
+    });
+}
+function startVerbs() {
+  const tenses = S.verbTenses || ['pres', 'pc'], verbs = S.verbLevel === 'all' ? VERBS : VERBS.slice(0, 10);
+  const queue = Array.from({ length: 12 }, (_, k) => {
+    const vb = rnd(verbs), t = rnd(tenses), i = Math.floor(Math.random() * 6);
+    const right = conj(vb, t, i)[0];
+    const mc = k < 4 || k % 3 === 0;
+    let opts = null;
+    if (mc) {
+      const cands = new Set();
+      [0, 1, 2, 3, 4, 5].forEach(j => cands.add(conj(vb, t, j)[0]));
+      TENSES.forEach(tt => cands.add(conj(vb, tt.id, i)[0]));
+      cands.delete(right);
+      opts = shuffle([right, ...pickN([...cands], 3)]);
+    }
+    return { type: 'verb', vb, t, i, mc, opts };
+  });
+  startSession({ kind: 'practice', verb: true, queue });
+}
 function startTest(u) {
   startSession({ kind: 'test', u, queue: mixedExercises([...Array(u).keys()], 12), lives: 3 });
 }
@@ -995,6 +1062,7 @@ function showFeedback(r) {
   fb.innerHTML = r.ok
     ? `<div class="fb-t">✓ ${rnd(PRAISE)}</div>${r.note ? `<div class="fb-n">${esc(r.note)}</div>` : ''}${r.meaning ? `<div class="fb-n">Betydelse: ${esc(r.meaning)}</div>` : ''}`
     : `<div class="fb-t">✗ Rätt svar:</div><div class="fb-a">${esc(r.answer || '')}</div>${r.meaning ? `<div class="fb-n">Betydelse: ${esc(r.meaning)}</div>` : ''}`;
+  if (r.diff) fb.insertAdjacentHTML('beforeend', `<div class="fb-d">${r.diff}</div>`);
   if (ansFr && ex.type !== 'match' && ex.type !== 'dialogue') { const b = document.createElement('button'); b.className = 'say-b sm'; b.textContent = '🔊'; b.onclick = () => say(ansFr); fb.querySelector('.fb-t').append(b); }
   const btn = $('#check'); btn.disabled = false; btn.textContent = 'Fortsätt'; btn.focus();
   $('.ltop .lh').outerHTML = livesHtml();
@@ -1050,7 +1118,9 @@ function finish(completed) {
     if (L.mistakes === 0 && L.total) extra = '<p class="unlock">🎧 Du förstod allt!</p>';
   } else if (L.kind === 'practice') {
     xp = L.review ? 10 : 5; ecus = L.review ? 5 : 2; if (S.hearts < HEART_MAX) { S.hearts++; extra = '<p class="unlock">❤️ Du fick tillbaka ett hjärta!</p>'; }
-    title = L.review ? 'Révision terminée !' : 'Bien joué !';
+    if (L.dict || L.verb) { xp = 10; ecus = 5; }
+    title = L.review ? 'Révision terminée !' : L.dict ? 'Dictée terminée !' : L.verb ? 'Conjugaison terminée !' : 'Bien joué !';
+    if (L.verb && L.mistakes === 0) extra += '<p class="unlock">🔤 Alla verbformer rätt!</p>';
     if (L.review) { const left = dueItems().length; extra += left ? `<p class="muted">${left} kvar att repetera i dag.</p>` : '<p class="unlock">🧠 Allt repeterat för i dag!</p>'; }
   } else if (L.kind === 'role') {
     char = COURSE[L.u].character;
@@ -1384,7 +1454,40 @@ const EX = {
     bindSay(root); bindAccents(root); setTimeout(() => say(ex.s.fr), 300);
     const inp = $('#inp', root); inp.oninput = () => setReady(inp.value.trim().length > 0);
     inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); onCheck(); } };
-    cur.check = () => { const g = grade(inp.value, [ex.s.fr, ...(ex.s.alt || [])]); inp.disabled = true; return { ...g, answer: ex.s.fr, say: ex.s.fr, meaning: first(ex.s.sv) }; };
+    cur.check = () => {
+      let g = grade(inp.value, [ex.s.fr, ...(ex.s.alt || [])]);
+      const a = norm(ex.s.fr, false), b = norm(inp.value, false);
+      if (!g.ok && ex.dict && lev(a, b) <= Math.max(1, Math.floor(a.length / 14))) g = { ok: true, note: 'Nästan rätt – jämför med meningen nedan.' };
+      inp.disabled = true;
+      return { ...g, answer: ex.s.fr, say: ex.s.fr, meaning: first(ex.s.sv), diff: g.ok && !g.note ? '' : diffHtml(inp.value, ex.s.fr) };
+    };
+  },
+  verb(ex, root) {
+    const t = TENSES.find(x => x.id === ex.t), forms = conj(ex.vb, ex.t, ex.i), p = pron(ex.t, ex.i, forms[0]);
+    root.innerHTML = `<p class="kind">Verb · ${esc(t.fr)}</p><h2 class="q"><span class="verb-inf">${esc(ex.vb.v)}</span> <small class="muted">(${esc(ex.vb.sv)})</small></h2>
+      <p class="muted small">${esc(t.sv[0].toUpperCase() + t.sv.slice(1))} – t.ex. ”${esc(t.ex)}”</p>
+      <div class="verb-card"><span class="verb-p">${esc(p)}${p.endsWith("'") ? '' : '&nbsp;'}</span><span class="verb-gap" id="vgap">…</span></div>
+      ${ex.mc ? `<div class="opts">${ex.opts.map((o, k) => `<button class="opt" data-k="${k}">${esc(o)}</button>`).join('')}</div>`
+        : `<input id="inp" class="verb-inp" placeholder="Skriv verbformen…" autocapitalize="off" autocomplete="off" spellcheck="false">${accentBar()}`}`;
+    const full = `${p}${p.endsWith("'") ? '' : ' '}${shown(ex.vb, ex.t, ex.i)}`;
+    const sayFull = `${p.replace(/\/(elle|qu'elle)s?/, '')}${p.endsWith("'") ? '' : ' '}${forms[0]}`;
+    if (ex.mc) {
+      let sel = null;
+      $$('.opt', root).forEach(b => b.onclick = () => { if (L.checked) return; sel = ex.opts[+b.dataset.k]; $('#vgap', root).textContent = sel; $$('.opt', root).forEach(x => x.classList.toggle('sel', x === b)); setReady(true); });
+      cur.check = () => ({ ok: forms.includes(sel), answer: full, say: sayFull });
+    } else {
+      bindAccents(root);
+      const inp = $('#inp', root); inp.oninput = () => { setReady(inp.value.trim().length > 0); $('#vgap', root).textContent = inp.value || '…'; };
+      inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); onCheck(); } };
+      setTimeout(() => inp.focus(), 50);
+      cur.check = () => {
+        inp.disabled = true;
+        const v = norm(inp.value).replace(/^(j'|je |tu |il |elle |nous |vous |ils |elles |que |qu')+/, '').trim();
+        if (forms.some(f => norm(f) === v)) return { ok: true, answer: full, say: sayFull };
+        if (forms.some(f => norm(f, false) === norm(v, false))) return { ok: true, note: `Tänk på accenterna: ${full}`, answer: full, say: sayFull };
+        return { ok: false, answer: full, say: sayFull };
+      };
+    }
   },
   speak(ex, root) {
     root.innerHTML = `<p class="kind">Uttal</p><h2 class="q">Säg meningen högt</h2>
@@ -1807,4 +1910,4 @@ if ('serviceWorker' in navigator) window.addEventListener('load', () => navigato
 boot();
 
 // För test
-window.__psc = { get S() { return S; }, get L() { return L; }, get amb() { return ambCur?.id || null; }, get LM() { return LM; }, COURSE, STORIES, renderEx: () => renderEx() };
+window.__psc = { get S() { return S; }, get L() { return L; }, get amb() { return ambCur?.id || null; }, get LM() { return LM; }, COURSE, STORIES, renderEx: () => renderEx(), conjCheck: (e, o) => conj(e.vb, e.t, e.i).includes(o), conjAns: e => conj(e.vb, e.t, e.i)[0] };

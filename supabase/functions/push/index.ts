@@ -1,6 +1,6 @@
 // Allez ! – pushnotiser (Supabase Edge Function "push")
 // type: 'cheer' → skickar pepp direkt till mottagaren
-// type: 'cron'  → körs varje timme; kl. 19 svensk tid påminns de som inte övat i dag
+// type: 'cron'  → körs varje timme; den som inte övat i dag påminns vid sin valda tid (förval kl. 19)
 import webpush from 'npm:web-push@3.6.7';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -81,7 +81,6 @@ Deno.serve(async (req) => {
     const cronSecret = await secret('cron');
     if (!cronSecret || req.headers.get('x-cron-secret') !== cronSecret) return json({ error: 'nej' }, 401);
     const hour = Number(sthlm({ hour: '2-digit', hourCycle: 'h23' }, 'en-GB'));
-    if (hour !== 19 && !body.force) return json({ skipped: hour });
     const today = sthlm({ year: 'numeric', month: '2-digit', day: '2-digit' });
     const { data: subs } = await sb.from('push_subs').select('user_id');
     const ids = [...new Set((subs || []).map((s) => s.user_id))];
@@ -90,18 +89,26 @@ Deno.serve(async (req) => {
     let sent = 0;
     for (const p of profs || []) {
       const st = p.state || {};
+      // Var och en väljer sin egen tid i appen (förval kl. 19)
+      const want = Number.isInteger(st.remindHour) ? st.remindHour : 19;
+      if (hour !== want && !body.force) continue;
       if (st.lastActive === today) continue;
       let streak = 0;
       if (st.lastActive) {
         const gap = daysBetween(st.lastActive, today);
         streak = gap <= 1 || gap - 1 <= (st.freezes || 0) ? st.streak || 0 : 0;
       }
+      // Antal ord och meningar som ska repeteras i dag
+      const due = Object.values(st.srs || {}).filter((it: any) => it && it.due && it.due <= today).length;
+      const rep = due ? `${due} ${due === 1 ? 'ord väntar' : 'ord och meningar väntar'} på repetition.` : '';
       const msg = streak > 0
-        ? { title: `🔥 Din svit på ${streak} ${streak === 1 ? 'dag' : 'dagar'} är i fara!`, body: 'En lektion räcker – Madame Brioche håller en croissant varm åt dig.' }
-        : { title: '🥐 Bonsoir !', body: 'Fem minuter franska i Port-Saint-Clément i kväll?' };
+        ? { title: `🔥 Din svit på ${streak} ${streak === 1 ? 'dag' : 'dagar'} är i fara!`, body: rep ? `${rep} En kort runda räcker.` : 'En lektion räcker – Madame Brioche håller en croissant varm åt dig.' }
+        : due
+          ? { title: `🧠 ${due} att repetera i dag`, body: 'Fem minuter i Port-Saint-Clément så sitter de bättre.' }
+          : { title: '🥐 Bonjour !', body: 'Fem minuter franska i Port-Saint-Clément i dag?' };
       sent += await sendTo(p.id, { ...msg, url: './' });
     }
-    return json({ sent });
+    return json({ sent, hour });
   }
 
   return json({ error: 'okänd typ' }, 400);

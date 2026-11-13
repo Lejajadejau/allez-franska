@@ -56,7 +56,7 @@ create table if not exists public.app_secrets (name text primary key, value text
 alter table public.app_secrets enable row level security;
 insert into public.app_secrets (name, value) values ('cron', encode(extensions.gen_random_bytes(24), 'hex')) on conflict (name) do nothing;
 
--- Påminnelser: anropa funktionen varje hel timme (den skickar bara kl. 19 svensk tid)
+-- Påminnelser: anropa funktionen varje hel timme (var och en påminns vid sin valda tid, förval kl. 19)
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 select cron.schedule('allez-paminnelser', '0 * * * *', $$

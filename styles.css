@@ -461,3 +461,23 @@ body[data-tod="night"] .scene svg .lamp-glow { filter: blur(2px); }
 .role-b { background: #f4ecdb; border-color: var(--butter-d); box-shadow: 0 4px 0 var(--butter-d); }
 .role-q h3 { font-size: 1.05rem; } .sv-q { font-family: 'Fraunces', Georgia, serif; color: var(--blue); }
 .mic.sm { margin-top: 10px; padding: 8px 14px; font-size: .9rem; }
+
+/* Diktamen och verbträning */
+.dict-chip { background: #eef5e8; border-color: #c8ddb6; color: #4f7a35; }
+.verb-chip { background: #f3ecf7; border-color: #d9c6e6; color: #6b3f84; }
+.fb-d { margin-top: 8px; line-height: 1.7; font-weight: 700; font-size: 1.02rem; }
+.fb-d .d-ok { color: #3f7d2f; }
+.fb-d .d-acc { background: #fff1c2; border-radius: 4px; padding: 0 2px; color: #8a6200; }
+.fb-d .d-miss { background: #fbd9d2; border-radius: 4px; padding: 0 2px; color: var(--bad); text-decoration: underline wavy; }
+.verb-inf { font-size: 1.6rem; }
+.verb-card { display: flex; align-items: baseline; justify-content: center; gap: 0; flex-wrap: wrap; margin: 18px 0; padding: 18px 12px; border-radius: 18px; background: #fff; border: 2px solid var(--line); font-family: Fraunces, Georgia, serif; font-size: 1.5rem; }
+.verb-p { color: var(--ink2); }
+.verb-gap { font-weight: 800; color: var(--blue); border-bottom: 3px dashed #c3d4e2; min-width: 3ch; text-align: center; }
+.verb-inp { width: 100%; font-size: 1.2rem; padding: 14px; border-radius: 14px; border: 2px solid var(--line); background: #fff; }
+.verb-tenses { margin: 12px 0; }
+.verb-tenses .chip { display: flex; flex-direction: column; align-items: flex-start; text-align: left; border-radius: 14px; padding: 8px 12px; }
+.verb-tenses .chip small { font-weight: 600; color: var(--ink2); font-size: .74rem; }
+.verb-tenses .chip.on { border-color: #6b3f84; background: #f3ecf7; color: #6b3f84; }
+.small-seg { margin: 6px 0 14px; }
+.small-seg button { font-size: .85rem; padding: 8px 4px; }
+.remind-sel { font: inherit; font-weight: 800; padding: 6px 8px; border-radius: 10px; border: 2px solid var(--line); background: #fff; }
