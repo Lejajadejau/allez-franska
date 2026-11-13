@@ -2,6 +2,7 @@ import { COURSE, FUTURE } from './content.js';
 import { CONFIG } from './config.js';
 import * as ART from './art.js';
 import { STORIES } from './stories.js';
+import { PH } from './audiomap.js';
 
 // ================= Hjälpfunktioner =================
 const $ = (s, r = document) => r.querySelector(s);
@@ -74,7 +75,26 @@ function loadVoices() {
 }
 let frVoices = [];
 if ('speechSynthesis' in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+// Inspelade röster: fraser i audio/ph, samtal i audio/stories. Talsyntes som reserv.
+const AUDIO_ROOT = CONFIG.SUPABASE_URL ? CONFIG.SUPABASE_URL + '/storage/v1/object/public/audio/' : '';
+let phraseAudio = null;
+function stopAudio() { try { phraseAudio?.pause(); storyAudio?.pause(); } catch {} }
 function say(text, slow = false, opt = {}) {
+  const key = String(text).replace(/\|/g, ' ').trim();
+  const id = AUDIO_ROOT && PH[key];
+  if (id && !opt.noRec) {
+    stopAudio(); if ('speechSynthesis' in window) speechSynthesis.cancel();
+    if (!phraseAudio) phraseAudio = new Audio();
+    const a = phraseAudio; let done = false;
+    const fin = () => { if (!done) { done = true; opt.onend?.(); } };
+    const fallback = () => { if (!done) { done = true; say(text, slow, { ...opt, noRec: true }); } };
+    a.onended = fin; a.onerror = fallback;
+    a.src = `${AUDIO_ROOT}ph/p${id}.mp3`;
+    a.preservesPitch = true; a.webkitPreservesPitch = true;
+    a.playbackRate = slow ? 0.7 : 1;
+    const p = a.play(); if (p && p.catch) p.catch(fallback);
+    return;
+  }
   if (!('speechSynthesis' in window)) { opt.onend?.(); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text.replace(/\|/g, ' '));
@@ -909,7 +929,7 @@ function storySheet(u, si) {
     (w, close) => $('#go', w).onclick = () => { close(); startStory(u, si); });
 }
 // Inspelade röster (ElevenLabs) – TTS som reserv
-const AUDIO_BASE = CONFIG.SUPABASE_URL ? CONFIG.SUPABASE_URL + '/storage/v1/object/public/audio/stories/' : '';
+const AUDIO_BASE = AUDIO_ROOT ? AUDIO_ROOT + 'stories/' : '';
 const lineUrl = (st, idx) => AUDIO_BASE ? `${AUDIO_BASE}${st.id}-${idx}.mp3` : '';
 let storyAudio = null;
 const audioCache = {};
@@ -924,6 +944,7 @@ function playLine(st, idx, onend) {
   const tts = () => say(ln.fr, false, { ...storyVoice(st, ln.w), onend: fin });
   if ('speechSynthesis' in window) speechSynthesis.cancel();
   if (!url) return tts();
+  try { phraseAudio?.pause(); } catch {}
   if (!storyAudio) storyAudio = new Audio();
   const a = storyAudio;
   a.pause(); a.onended = fin; a.onerror = () => { if (!done) tts(); };

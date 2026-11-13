@@ -1,4 +1,4 @@
-// Lyssningssamtal ("histoires") – två per kvarter, efter lektion 2 och 4.
+// Lyssningssamtal ("histoires") – tre per kvarter, efter lektion 2, 4 och 5.
 // Pedagogik: lyssna först, bara kända ord plus något enstaka nytt som går att förstå av sammanhanget,
 // frågor under samtalets gång (på svenska i A1, på enkel franska från A2), och en replik att säga själv.
 // w: 'a' = kvarterets figur, 'b' = den andra personen. qs.at = frågan visas efter den repliken.
@@ -42,6 +42,23 @@ export const STORIES = {
       ],
       speak: 0,
     },
+    { id: 'sb3', after: 4, title: 'Bonne journée !', sv: 'Ha en bra dag!',
+    cast: { a: { name: 'Madame Brioche', char: 'brioche', g: 'f' }, b: { name: 'Léa', g: 'f' } },
+    lines: [
+      { w: 'a', fr: 'Bonjour, Léa !', sv: 'Hej, Léa!' },
+      { w: 'b', fr: "Bonjour, madame ! Je voudrais deux croissants, s'il vous plaît.", sv: 'Hej! Jag skulle vilja ha två croissanter, tack.' },
+      { w: 'a', fr: 'Voilà deux croissants. Et avec ceci ?', sv: 'Här är två croissanter. Något mer?' },
+      { w: 'b', fr: "Une tarte aussi, s'il vous plaît.", sv: 'En paj också, tack.' },
+      { w: 'a', fr: 'Très bien. Ça fait cinq euros.', sv: 'Mycket bra. Det blir fem euro.' },
+      { w: 'b', fr: "Voilà. C'est tout, merci !", sv: 'Varsågod. Det var allt, tack!' },
+      { w: 'a', fr: 'Merci, Léa. Bonne journée !', sv: 'Tack, Léa. Ha en bra dag!' },
+    ],
+    qs: [
+      { at: 1, q: 'Hur många croissanter vill Léa ha?', o: ['En', 'Två', 'Tre'], a: 1 },
+      { at: 3, q: 'Vad vill Léa ha mer?', o: ['En paj', 'En baguette', 'Ett chokladbröd'], a: 0 },
+      { at: 4, q: 'Hur mycket blir det?', o: ['Tre euro', 'Fem euro', 'Tio euro'], a: 1 },
+    ],
+    speak: 5 },
   ],
   marche: [
     {
@@ -80,6 +97,23 @@ export const STORIES = {
       ],
       speak: 3,
     },
+    { id: 'sm3', after: 4, title: 'Les belles fraises', sv: 'De fina jordgubbarna',
+    cast: { a: { name: 'Monsieur Poireau', char: 'poireau', g: 'm' }, b: { name: 'Monsieur Martin', g: 'm' } },
+    lines: [
+      { w: 'a', fr: "Bonjour, monsieur ! Les fraises sont belles aujourd'hui !", sv: 'God dag! Jordgubbarna är fina i dag!' },
+      { w: 'b', fr: "Bonjour ! C'est combien, le kilo ?", sv: 'God dag! Hur mycket kostar kilot?' },
+      { w: 'a', fr: 'Huit euros le kilo.', sv: 'Åtta euro kilot.' },
+      { w: 'b', fr: "Huit euros ? C'est cher !", sv: 'Åtta euro? Det är dyrt!' },
+      { w: 'a', fr: 'Alors, les bananes : trois euros le kilo.', sv: 'Då bananerna: tre euro kilot.' },
+      { w: 'b', fr: "Parfait ! Un kilo de bananes et une salade, s'il vous plaît.", sv: 'Perfekt! Ett kilo bananer och en sallad, tack.' },
+      { w: 'a', fr: 'Très bien. Ça fait quatre euros. Merci !', sv: 'Mycket bra. Det blir fyra euro. Tack!' },
+    ],
+    qs: [
+      { at: 0, q: 'Vad är fint i dag?', o: ['Jordgubbarna', 'Äpplena', 'Tomaterna'], a: 0 },
+      { at: 3, q: 'Vad tycker mannen om priset?', o: ['Det är billigt', 'Det är dyrt'], a: 1 },
+      { at: 5, q: 'Vad köper mannen?', o: ['Jordgubbar', 'Bananer och en sallad', 'Päron'], a: 1 },
+    ],
+    speak: 3 },
   ],
   tram: [
     {
@@ -119,6 +153,23 @@ export const STORIES = {
       ],
       speak: 1,
     },
+    { id: 'st3', after: 4, title: 'Le prochain arrêt', sv: 'Nästa hållplats',
+    cast: { a: { name: 'Monsieur Rémi', char: 'conducteur', g: 'm' }, b: { name: 'Emma', g: 'f' } },
+    lines: [
+      { w: 'b', fr: "Bonjour, monsieur. Un ticket pour le port, s'il vous plaît.", sv: 'God dag. En biljett till hamnen, tack.' },
+      { w: 'a', fr: "Voilà. Deux euros. Validez le ticket, s'il vous plaît !", sv: 'Varsågod. Två euro. Stämpla biljetten, tack!' },
+      { w: 'b', fr: "Merci. Le port, c'est loin ?", sv: 'Tack. Är det långt till hamnen?' },
+      { w: 'a', fr: "Non, c'est près. Le port, c'est le prochain arrêt.", sv: 'Nej, det är nära. Hamnen är nästa hållplats.' },
+      { w: 'b', fr: 'Parfait ! Alors, je descends au prochain arrêt.', sv: 'Perfekt! Då går jag av vid nästa hållplats.' },
+      { w: 'a', fr: 'Voilà le port. Bon voyage, madame !', sv: 'Här är hamnen. Trevlig resa!' },
+      { w: 'b', fr: 'Merci, monsieur. Au revoir !', sv: 'Tack. Hej då!' },
+    ],
+    qs: [
+      { at: 0, q: 'Vart ska Emma?', o: ['Till stationen', 'Till hamnen', 'Till torget'], a: 1 },
+      { at: 1, q: 'Vad ska hon göra med biljetten?', o: ['Stämpla den', 'Slänga den', 'Ge den till föraren'], a: 0 },
+      { at: 3, q: 'När kommer hamnen?', o: ['Vid nästa hållplats', 'Om tre hållplatser', 'Det är långt dit'], a: 0 },
+    ],
+    speak: 4 },
   ],
   police: [
     {
@@ -159,6 +210,24 @@ export const STORIES = {
       ],
       speak: 4,
     },
+    { id: 'sp3', after: 4, title: 'Au commissariat', sv: 'På polisstationen',
+    cast: { a: { name: 'Konstapel Lefèvre', char: 'lefevre', g: 'm' }, b: { name: 'Monsieur Martin', g: 'm' } },
+    lines: [
+      { w: 'b', fr: "Bonjour, monsieur l'agent. J'ai perdu mon sac ce matin.", sv: 'God dag, konstapeln. Jag tappade bort min väska i morse.' },
+      { w: 'a', fr: 'Ne vous inquiétez pas. Comment vous appelez-vous ?', sv: 'Oroa er inte. Vad heter ni?' },
+      { w: 'b', fr: "Je m'appelle Paul Martin.", sv: 'Jag heter Paul Martin.' },
+      { w: 'a', fr: 'Il est comment, votre sac ?', sv: 'Hur ser er väska ut?' },
+      { w: 'b', fr: 'Il est petit et noir. Mes clés et mon téléphone sont dedans.', sv: 'Den är liten och svart. Mina nycklar och min telefon ligger i den.' },
+      { w: 'a', fr: "Un petit sac noir… J'ai trouvé ce sac au café. C'est votre sac ?", sv: 'En liten svart väska… Jag hittade den här väskan på kaféet. Är det er väska?' },
+      { w: 'b', fr: "Oui ! Merci beaucoup, monsieur l'agent !", sv: 'Ja! Tack så mycket, konstapeln!' },
+    ],
+    qs: [
+      { at: 0, q: "Qu'est-ce que l'homme a perdu ?", o: ['Son chien', 'Son sac', 'Son chapeau'], a: 1 },
+      { at: 2, q: "Comment s'appelle l'homme ?", o: ['Paul Martin', 'Lucas Martin', 'Paul Dubois'], a: 0 },
+      { at: 4, q: "Qu'est-ce qu'il y a dans le sac ?", o: ['Un livre et un stylo', 'Ses clés et son téléphone', 'Des fraises'], a: 1 },
+      { at: 5, q: "Où est-ce que l'agent a trouvé le sac ?", o: ['Au café', 'Au port', 'Dans le tram'], a: 0 },
+    ],
+    speak: 2 },
   ],
   port: [
     {
@@ -199,6 +268,24 @@ export const STORIES = {
       ],
       speak: 4,
     },
+    { id: 'sh3', after: 4, title: 'La tempête', sv: 'Stormen',
+    cast: { a: { name: 'Gaspard', char: 'gaspard', g: 'm' }, b: { name: 'Léa', g: 'f' } },
+    lines: [
+      { w: 'b', fr: "Gaspard, vous allez pêcher aujourd'hui ?", sv: 'Gaspard, ska ni fiska i dag?' },
+      { w: 'a', fr: 'Non. Regardez la mer ! Il y a beaucoup de vent.', sv: 'Nej. Titta på havet! Det blåser mycket.' },
+      { w: 'b', fr: "C'est vrai. Et la météo ?", sv: 'Det stämmer. Och väderprognosen?' },
+      { w: 'a', fr: "Ce soir, il va pleuvoir. C'est une tempête !", sv: 'I kväll kommer det att regna. Det blir storm!' },
+      { w: 'b', fr: 'Alors, vous allez rentrer ?', sv: 'Ska ni åka in, då?' },
+      { w: 'a', fr: 'Oui, je vais rentrer le bateau et le filet.', sv: 'Ja, jag ska ta in båten och nätet.' },
+      { w: 'b', fr: 'Bonne idée ! Et demain ?', sv: 'Bra idé! Och i morgon?' },
+      { w: 'a', fr: 'Demain, il va faire beau. Je vais pêcher demain !', sv: 'I morgon blir det fint väder. Jag ska fiska i morgon!' },
+    ],
+    qs: [
+      { at: 1, q: 'Pourquoi Gaspard ne va pas pêcher ?', o: ['Il fait trop chaud', 'Il y a beaucoup de vent', 'Il est fatigué'], a: 1 },
+      { at: 3, q: 'Quel temps va-t-il faire ce soir ?', o: ['Il va faire beau', 'Il va pleuvoir – une tempête', 'Il va faire chaud'], a: 1 },
+      { at: 7, q: 'Quand est-ce que Gaspard va pêcher ?', o: ['Ce soir', 'Demain', 'Dimanche'], a: 1 },
+    ],
+    speak: 4 },
   ],
   ecole: [
     {
@@ -238,6 +325,23 @@ export const STORIES = {
       ],
       speak: 3,
     },
+    { id: 'se3', after: 4, title: 'Le nouvel élève', sv: 'Den nya eleven',
+    cast: { a: { name: 'Madame Dubois', char: 'dubois', g: 'f' }, b: { name: 'Hugo', g: 'm' } },
+    lines: [
+      { w: 'a', fr: 'Bonjour ! Tu es le nouvel élève ?', sv: 'Hej! Är du den nya eleven?' },
+      { w: 'b', fr: "Oui, madame. Je m'appelle Hugo.", sv: 'Ja, fröken. Jag heter Hugo.' },
+      { w: 'a', fr: "Bienvenue à l'école, Hugo ! Tu as quel âge ?", sv: 'Välkommen till skolan, Hugo! Hur gammal är du?' },
+      { w: 'b', fr: "J'ai douze ans.", sv: 'Jag är tolv år.' },
+      { w: 'a', fr: 'Très bien. Tu aimes lire ?', sv: 'Vad bra. Tycker du om att läsa?' },
+      { w: 'b', fr: "Non, je déteste lire… mais j'adore jouer au foot !", sv: 'Nej, jag hatar att läsa… men jag älskar att spela fotboll!' },
+      { w: 'a', fr: "D'accord ! Lucas adore le foot aussi. Voici ta classe.", sv: 'Okej! Lucas älskar också fotboll. Här är din klass.' },
+    ],
+    qs: [
+      { at: 1, q: "Comment s'appelle le nouvel élève ?", o: ['Lucas', 'Hugo', 'Paul'], a: 1 },
+      { at: 3, q: 'Quel âge a Hugo ?', o: ['Dix ans', 'Douze ans', 'Six ans'], a: 1 },
+      { at: 5, q: "Qu'est-ce que Hugo adore ?", o: ['Lire', 'Jouer au foot', 'La musique'], a: 1 },
+    ],
+    speak: 3 },
   ],
   cafe: [
     {
@@ -277,5 +381,23 @@ export const STORIES = {
       ],
       speak: 6,
     },
+    { id: 'sc3', after: 4, title: 'Un dernier café', sv: 'En sista kaffe',
+    cast: { a: { name: 'Monsieur Olivier', char: 'olivier', g: 'm' }, b: { name: 'Léa', g: 'f' } },
+    lines: [
+      { w: 'b', fr: "Olivier, un dernier café, s'il te plaît. Demain, je pars pour Paris.", sv: 'Olivier, en sista kaffe, tack. I morgon åker jag till Paris.' },
+      { w: 'a', fr: "Déjà ? C'est triste ! Tu vas revenir bientôt ?", sv: 'Redan? Vad tråkigt! Kommer du tillbaka snart?' },
+      { w: 'b', fr: "Je l'espère. Si j'avais plus de temps, je resterais pour toujours !", sv: 'Jag hoppas det. Om jag hade mer tid skulle jag stanna för alltid!' },
+      { w: 'a', fr: "Ici, tu as beaucoup d'amis. On pourrait faire une fête ce soir !", sv: 'Här har du många vänner. Vi kunde ha fest i kväll!' },
+      { w: 'b', fr: 'Ce serait super ! Mais raconte-moi : qui a fait ce gâteau ?', sv: 'Det vore toppen! Men berätta: vem har bakat den här kakan?' },
+      { w: 'a', fr: "Madame Brioche, bien sûr ! C'est le meilleur gâteau de la ville.", sv: 'Madame Brioche, förstås! Det är stadens bästa kaka.' },
+      { w: 'b', fr: 'Alors, un café et un gâteau. À emporter, pour le train !', sv: 'Då tar jag ett kaffe och en kaka. Att ta med, till tåget!' },
+    ],
+    qs: [
+      { at: 0, q: 'Où est-ce que Léa va demain ?', o: ['À Paris', 'Au port', "À l'école"], a: 0 },
+      { at: 3, q: "Qu'est-ce qu'Olivier propose ?", o: ['Un voyage', 'Une fête ce soir', 'Un match de foot'], a: 1 },
+      { at: 5, q: 'Qui a fait le gâteau ?', o: ['Olivier', 'Madame Brioche', 'Léa'], a: 1 },
+      { at: 6, q: 'Pourquoi Léa prend le gâteau à emporter ?', o: ['Pour le train', 'Pour ses amis', 'Pour le dîner'], a: 0 },
+    ],
+    speak: 4 },
   ],
 };
