@@ -101,7 +101,73 @@ if ('speechSynthesis' in window) { loadVoices(); speechSynthesis.onvoiceschanged
 // Inspelade röster: fraser i audio/ph, samtal i audio/stories. Talsyntes som reserv.
 const AUDIO_ROOT = CONFIG.SUPABASE_URL ? CONFIG.SUPABASE_URL + '/storage/v1/object/public/audio/' : '';
 let phraseAudio = null;
-function stopAudio() { try { phraseAudio?.pause(); storyAudio?.pause(); } catch {} }
+function stopAudio() { playTok++; stopWA(); try { phraseAudio?.pause(); storyAudio?.pause(); } catch {} }
+// ===== Jämn ljudnivå =====
+// Inspelningarna har olika volym. Därför spelas de genom Web Audio, där varje klipp
+// mäts och justeras till samma nivå. Fungerar inte Web Audio används vanlig uppspelning.
+let curSrc = null, playTok = 0;
+const bufCache = new Map();
+function audioCtx() {
+  if (actx) return actx;
+  const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
+  try { actx = new C(); } catch { actx = null; }
+  return actx;
+}
+function levelGain(buf) {
+  const d = buf.getChannelData(0), W = 512; let sum = 0, n = 0, pk = 0;
+  for (let i = 0; i < d.length; i += W) {
+    let s = 0; const e = Math.min(i + W, d.length);
+    for (let j = i; j < e; j++) { const v = d[j]; s += v * v; const a = v < 0 ? -v : v; if (a > pk) pk = a; }
+    s /= (e - i); if (s > 1e-5) { sum += s; n++; }
+  }
+  if (!n || !pk) return 1;
+  const rms = Math.sqrt(sum / n);
+  return Math.max(0.1, Math.min(0.1 / rms, 0.89 / pk, 8)); // mål −20 dBFS, toppar under −1 dBFS
+}
+function loadBuf(url) {
+  if (bufCache.has(url)) { const v = bufCache.get(url); bufCache.delete(url); bufCache.set(url, v); return v; }
+  const ctx = audioCtx();
+  const pr = fetch(url).then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.arrayBuffer(); })
+    .then(ab => new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)))
+    .then(buf => ({ buf, g: levelGain(buf) }));
+  pr.catch(() => bufCache.delete(url));
+  bufCache.set(url, pr);
+  while (bufCache.size > 80) bufCache.delete(bufCache.keys().next().value);
+  return pr;
+}
+function stopWA() { const s = curSrc; curSrc = null; if (s) { s.onended = null; try { s.stop(); } catch { } } }
+function waReady(rate) { const c = rate === 1 && AUDIO_ROOT ? audioCtx() : null; if (c && c.state !== 'running') c.resume?.().catch(() => { }); return c && c.state === 'running' ? c : null; }
+// Spelar ett klipp med jämn nivå. onend när det är klart, onfail om filen inte går att spela.
+function playNorm(el, url, { rate = 1, onend, onfail } = {}) {
+  const tok = ++playTok; stopWA();
+  let done = false; const fin = () => { if (!done) { done = true; onend?.(); } };
+  const fail = () => { if (!done) { done = true; onfail ? onfail() : onend?.(); } };
+  const playEl = () => {
+    if (tok !== playTok) return;
+    el.onended = fin; el.onerror = fail; el.muted = false;
+    el.src = url; el.preservesPitch = true; el.webkitPreservesPitch = true; el.playbackRate = rate;
+    // Blockerad uppspelning (t.ex. iPhone utan tryck) ska inte ge telefonens röst – tryck på 🔊 i stället
+    const p = el.play(); if (p && p.catch) p.catch(e => { if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError')) fin(); else fail(); });
+  };
+  const ctx = waReady(rate);
+  if (!ctx) return playEl();
+  try { el.pause(); } catch { }
+  loadBuf(url).then(({ buf, g }) => {
+    if (tok !== playTok) return;
+    stopWA();
+    const src = ctx.createBufferSource(), gn = ctx.createGain();
+    src.buffer = buf; gn.gain.value = g; src.connect(gn); gn.connect(ctx.destination);
+    src.onended = () => { if (curSrc === src) { curSrc = null; fin(); } };
+    curSrc = src; src.start();
+  }).catch(() => { if (tok === playTok) playEl(); });
+}
+function preloadUrl(url) { if (waReady(1)) loadBuf(url).catch(() => { }); }
+// Web Audio måste startas av ett tryck
+document.addEventListener('pointerdown', () => {
+  const c = AUDIO_ROOT ? audioCtx() : null; if (!c) return;
+  if (c.state !== 'running') c.resume?.().catch(() => { });
+  if (!c.__unlocked) { c.__unlocked = true; try { const s = c.createBufferSource(); s.buffer = c.createBuffer(1, 1, 22050); s.connect(c.destination); s.start(0); } catch { } }
+}, true);
 // Lås upp ljudet vid första trycket så att iPhone tillåter automatisk uppspelning efteråt
 document.addEventListener('pointerdown', function unlockAudio() {
   document.removeEventListener('pointerdown', unlockAudio, true);
@@ -120,15 +186,7 @@ function say(text, slow = false, opt = {}) {
   if (id && !opt.noRec) {
     stopAudio(); if ('speechSynthesis' in window) speechSynthesis.cancel();
     if (!phraseAudio) phraseAudio = new Audio();
-    const a = phraseAudio; let done = false;
-    const fin = () => { if (!done) { done = true; opt.onend?.(); } };
-    const fallback = () => { if (!done) { done = true; say(text, slow, { ...opt, noRec: true }); } };
-    a.onended = fin; a.onerror = fallback; a.muted = false;
-    a.src = `${AUDIO_ROOT}ph/p${id}.mp3`;
-    a.preservesPitch = true; a.webkitPreservesPitch = true;
-    a.playbackRate = slow ? 0.7 : 1;
-    // Blockerad uppspelning (t.ex. iPhone utan tryck) ska inte ge telefonens röst – tryck på 🔊 i stället
-    const p = a.play(); if (p && p.catch) p.catch(e => { if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError')) fin(); else fallback(); });
+    playNorm(phraseAudio, `${AUDIO_ROOT}ph/p${id}.mp3`, { rate: slow ? 0.7 : 1, onend: opt.onend, onfail: () => say(text, slow, { ...opt, noRec: true }) });
     return;
   }
   if (!('speechSynthesis' in window)) { opt.onend?.(); return; }
@@ -1047,7 +1105,7 @@ function startSession(o) {
 function quitLesson() {
   sheet(`<div class="welcome">${ART.character('brioche', 'sad')}</div><h2>Vill du verkligen sluta?</h2><p>Du förlorar framstegen i den här lektionen.</p>
     <button class="btn primary" data-close>Fortsätt lära</button><button class="btn ghost" id="q">Avsluta</button>`,
-    (w, close) => $('#q', w).onclick = () => { close(); speechSynthesis?.cancel(); storyAudio?.pause(); setAmbience(null); L = null; save(); go('home'); });
+    (w, close) => $('#q', w).onclick = () => { close(); speechSynthesis?.cancel(); stopAudio(); setAmbience(null); L = null; save(); go('home'); });
 }
 function livesHtml() {
   if (L.kind === 'test') return `<div class="lh">${'💛'.repeat(Math.max(0, L.lives))}${'🤍'.repeat(3 - Math.max(0, L.lives))}</div>`;
@@ -1263,6 +1321,7 @@ const audioCache = {};
 function preloadLine(st, idx) {
   const url = lineUrl(st, idx);
   if (!url || idx >= st.lines.length || audioCache[url]) return;
+  if (waReady(1)) { audioCache[url] = 1; return preloadUrl(url); }
   const a = new Audio(); a.preload = 'auto'; a.src = url; audioCache[url] = a;
 }
 function playLine(st, idx, onend) {
@@ -1273,11 +1332,7 @@ function playLine(st, idx, onend) {
   if (!url) return tts();
   try { phraseAudio?.pause(); } catch {}
   if (!storyAudio) storyAudio = new Audio();
-  const a = storyAudio;
-  a.pause(); a.onended = fin; a.onerror = () => { if (!done) tts(); }; a.muted = false;
-  a.src = url;
-  const p = a.play();
-  if (p && p.catch) p.catch(e => { if (done) return; if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError')) fin(); else tts(); });
+  playNorm(storyAudio, url, { onend: fin, onfail: () => { if (!done) tts(); } });
 }
 function storyVoice(st, who) {
   const keys = Object.keys(st.cast), k = Math.max(0, keys.indexOf(who)), c = st.cast[who];
@@ -1682,7 +1737,7 @@ function ambBuffer(id) {
     .then(ab => new Promise((res, rej) => getCtx().decodeAudioData(ab, res, rej))).catch(e => { delete ambBufs[id]; throw e; });
   return ambBufs[id];
 }
-const speakingNow = () => (phraseAudio && !phraseAudio.paused) || (storyAudio && !storyAudio.paused) || ('speechSynthesis' in window && speechSynthesis.speaking);
+const speakingNow = () => !!curSrc || (phraseAudio && !phraseAudio.paused) || (storyAudio && !storyAudio.paused) || ('speechSynthesis' in window && speechSynthesis.speaking);
 const ambTarget = () => speakingNow() ? AMB_DUCK : AMB_VOL;
 async function setAmbience(id) {
   if (!S || S.amb === false || !AUDIO_ROOT || document.hidden) id = null;
@@ -1836,11 +1891,7 @@ function saySv(text, onend) {
   if (url) {
     stopAudio(); if ('speechSynthesis' in window) speechSynthesis.cancel();
     if (!phraseAudio) phraseAudio = new Audio();
-    const a = phraseAudio; let done = false;
-    const fin = () => { if (!done) { done = true; onend(); } };
-    a.onended = fin; a.onerror = () => { if (!done) { done = true; saySvTts(text, onend); } };
-    a.src = url; a.playbackRate = 1;
-    const p = a.play(); if (p && p.catch) p.catch(() => { if (!done) { done = true; saySvTts(text, onend); } });
+    playNorm(phraseAudio, url, { onend, onfail: () => saySvTts(text, onend) });
     return;
   }
   saySvTts(text, onend);
@@ -1913,7 +1964,7 @@ function showListen(it, ph) {
     try { navigator.mediaSession.metadata = new MediaMetadata({ title: it.fr, artist: it.sv, album: 'Allez ! – Lyssna fritt' }); } catch { }
   }
 }
-function lmStop() { LM.tok++; try { phraseAudio?.pause(); } catch { } if ('speechSynthesis' in window) speechSynthesis.cancel(); }
+function lmStop() { LM.tok++; stopAudio(); if ('speechSynthesis' in window) speechSynthesis.cancel(); }
 function lmPlay(on) {
   if (!LM) return;
   LM.playing = on; const b = $('#lplay'); if (b) b.textContent = on ? '⏸' : '▶';
@@ -1972,4 +2023,4 @@ if ('serviceWorker' in navigator) window.addEventListener('load', () => navigato
 boot();
 
 // För test
-window.__psc = { get S() { return S; }, get L() { return L; }, get amb() { return ambCur?.id || null; }, get LM() { return LM; }, COURSE, STORIES, renderEx: () => renderEx(), conjCheck: (e, o) => conj(e.vb, e.t, e.i).includes(o), conjAns: e => conj(e.vb, e.t, e.i)[0] };
+window.__psc = { get S() { return S; }, get L() { return L; }, get wa() { return { st: actx?.state, playing: !!curSrc, n: bufCache.size }; }, say: (t, o) => say(t, false, o || {}), get amb() { return ambCur?.id || null; }, get LM() { return LM; }, COURSE, STORIES, renderEx: () => renderEx(), conjCheck: (e, o) => conj(e.vb, e.t, e.i).includes(o), conjAns: e => conj(e.vb, e.t, e.i)[0] };
