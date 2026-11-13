@@ -304,6 +304,7 @@ function renderHome() {
   if (!S.welcomed) welcome();
   else checkCheers();
   installHint();
+  pushCard();
 }
 
 function welcome() {
@@ -376,6 +377,75 @@ function installHint() {
   const ib = $('#inst', el); if (ib) ib.onclick = async () => { deferredInstall.prompt(); await deferredInstall.userChoice; el.remove(); };
 }
 
+// ================= Pushnotiser =================
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+function b64ToBytes(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
+}
+let vapidKey = null;
+async function getVapid() {
+  if (vapidKey) return vapidKey;
+  const { data, error } = await sb.functions.invoke('push', { body: { type: 'key' } });
+  if (error || !data?.key) throw error || new Error('ingen nyckel');
+  return (vapidKey = data.key);
+}
+async function storeSub(sub) {
+  const j = sub.toJSON();
+  const { error } = await sb.from('push_subs').upsert({ user_id: userId, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth }, { onConflict: 'endpoint' });
+  if (error) console.warn('push_subs', error);
+  return !error;
+}
+async function enablePush() {
+  if (!sb || userId === 'local') { toast('Påminnelser kräver inloggning'); return false; }
+  if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !isStandalone()) {
+    sheet(`<div class="big-emoji">📲</div><h2>Lägg appen på hemskärmen först</h2>
+      <p>På iPhone fungerar påminnelser bara när Allez! är tillagd på hemskärmen. Tryck på <b>Dela</b> ⬆︎ → <b>Lägg till på hemskärmen</b>, öppna appen därifrån och slå på påminnelserna under Profil.</p>
+      <button class="btn primary" data-close>OK</button>`);
+    return false;
+  }
+  if (!pushSupported()) { toast('Den här webbläsaren kan inte ta emot påminnelser'); return false; }
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') { toast('Påminnelser är avstängda för appen i telefonens inställningar'); return false; }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(await getVapid()) });
+    if (!(await storeSub(sub))) { toast('Kunde inte spara – försök igen'); return false; }
+    S.push = true; save(); toast('🔔 Påminnelser påslagna');
+    return true;
+  } catch (e) { console.warn(e); toast('Kunde inte slå på påminnelser'); return false; }
+}
+async function disablePush() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) { await sb?.from('push_subs').delete().eq('endpoint', sub.endpoint); await sub.unsubscribe(); }
+  } catch { }
+  S.push = false; save(); toast('Påminnelser avstängda');
+}
+async function refreshPush() {
+  // Ser till att telefonens prenumeration finns kvar i databasen (den kan bytas ut av webbläsaren)
+  if (!S.push || !sb || userId === 'local' || !pushSupported() || Notification.permission !== 'granted') return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(await getVapid()) });
+    await storeSub(sub);
+  } catch (e) { console.warn(e); }
+}
+function pushCard() {
+  if (!sb || userId === 'local' || S.push || S.pushDismissed || !doneLessons().length || $('.push-card')) return;
+  if (!pushSupported() && !/iphone|ipad|ipod/i.test(navigator.userAgent)) return;
+  const el = document.createElement('div'); el.className = 'install card push-card';
+  el.innerHTML = `<span>🔔</span><div>Vill du få en påminnelse kl. 19 när du inte har övat – och se pepp direkt?</div>
+    <button class="btn small primary" id="pOn">Slå på</button><button class="x" aria-label="Stäng">✕</button>`;
+  const goal = $('.goal'); goal ? goal.after(el) : $('.main').prepend(el);
+  $('.x', el).onclick = () => { S.pushDismissed = true; save(); el.remove(); };
+  $('#pOn', el).onclick = async () => { if (await enablePush()) el.remove(); };
+}
+
 // ================= Ligan =================
 const CHEERS = [
   { e: '🥐', m: 'En croissant till dig – bra jobbat!' },
@@ -418,6 +488,7 @@ function cheerSheet(id, name) {
       close();
       if (error) { toast('Kunde inte skicka 😕'); return; }
       S.cheersSent[id] = today; save(); toast(`${c.e} skickat till ${name}!`);
+      sb.functions.invoke('push', { body: { type: 'cheer', to: id } }).catch(() => { });
     }));
 }
 
@@ -441,6 +512,7 @@ function renderProfile() {
     </div>
     <h3 class="sub">Inställningar</h3>
     <div class="card settings">
+      ${sb && userId !== 'local' ? `<label><span>Påminnelser kl. 19 och pepp</span><input type="checkbox" id="setPush" ${S.push ? 'checked' : ''}></label>` : ''}
       <label><span>Ljudeffekter</span><input type="checkbox" id="setSound" ${S.sound ? 'checked' : ''}></label>
       <label><span>Taluppgifter (mikrofon)${SR ? '' : ' – stöds inte här'}</span><input type="checkbox" id="setSpeak" ${S.speak && !S.speakBroken ? 'checked' : ''} ${SR ? '' : 'disabled'}></label>
       <button class="row-b" id="words">📚 Mina ord (${wordsLearned()})</button>
@@ -454,6 +526,7 @@ function renderProfile() {
   $('#buyF').onclick = () => { S.ecus -= 50; S.freezes++; save(); toast('🧊 Svitfrysning köpt'); renderProfile(); };
   $('#buyH').onclick = () => { S.ecus -= 80; S.hearts = HEART_MAX; save(); toast('❤️ Fullt med hjärtan'); renderProfile(); };
   $('#setSound').onchange = e => { S.sound = e.target.checked; save(); };
+  const sp = $('#setPush'); if (sp) sp.onchange = async e => { if (e.target.checked) { if (!(await enablePush())) e.target.checked = false; } else disablePush(); };
   $('#setSpeak').onchange = e => { S.speak = e.target.checked; S.speakPausedUntil = 0; S.speakBroken = false; save(); };
   $('#editP').onclick = () => renderOnboard(true);
   $('#words').onclick = wordList;
@@ -959,7 +1032,7 @@ async function boot() {
   load();
   if (sb) await pullRemote();
   if (!S.name) { renderOnboard(); return; }
-  save(); go('home');
+  save(); go('home'); refreshPush();
   setInterval(() => { if (!L) { const h = S.hearts; tick(); if (h !== S.hearts && view) { const el = $('.stat.hearts b'); if (el) el.textContent = S.hearts; save(false); } } }, 60000);
 }
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));

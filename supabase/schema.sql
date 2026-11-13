@@ -37,3 +37,32 @@ drop policy if exists "markera pepp som läst" on public.cheers;
 create policy "se egna pepp" on public.cheers for select to authenticated using (auth.uid() = to_id or auth.uid() = from_id);
 create policy "skicka pepp" on public.cheers for insert to authenticated with check (auth.uid() = from_id);
 create policy "markera pepp som läst" on public.cheers for update to authenticated using (auth.uid() = to_id);
+
+-- Pushnotiser: en rad per telefon/webbläsare som har slagit på påminnelser
+create table if not exists public.push_subs (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz not null default now()
+);
+alter table public.push_subs enable row level security;
+drop policy if exists "egna prenumerationer" on public.push_subs;
+create policy "egna prenumerationer" on public.push_subs for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Servernycklar (ingen policy = bara servern/service role kommer åt dem)
+create table if not exists public.app_secrets (name text primary key, value text not null);
+alter table public.app_secrets enable row level security;
+insert into public.app_secrets (name, value) values ('cron', encode(extensions.gen_random_bytes(24), 'hex')) on conflict (name) do nothing;
+
+-- Påminnelser: anropa funktionen varje hel timme (den skickar bara kl. 19 svensk tid)
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+select cron.schedule('allez-paminnelser', '0 * * * *', $$
+  select net.http_post(
+    url := 'https://yspfxxfaokpivyvyvojm.supabase.co/functions/v1/push',
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', (select value from public.app_secrets where name = 'cron')),
+    body := '{"type":"cron"}'::jsonb
+  );
+$$);
