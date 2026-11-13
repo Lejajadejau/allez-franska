@@ -4,6 +4,7 @@
 // w: 'a' = kvarterets figur, 'b' = den andra personen. qs.at = frågan visas efter den repliken.
 
 import { STORIES2 } from './stories2.js';
+import { STORIES3 } from './stories3.js';
 
 export const STORIES = {
   boulangerie: [
@@ -403,4 +404,4 @@ export const STORIES = {
     speak: 4 },
   ],
 };
-Object.assign(STORIES, STORIES2);
+Object.assign(STORIES, STORIES2, STORIES3);

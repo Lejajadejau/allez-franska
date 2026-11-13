@@ -2,6 +2,7 @@
 // Ord: fr = franska, sv = svenska (alternativ med |), e = bild (emoji)
 // Meningar: fr, sv (alternativ med |), alt = andra godtagbara franska svar
 import { MORE } from './units2.js';
+import { MORE2 } from './units3.js';
 
 export const COURSE = [
   {
@@ -948,7 +949,7 @@ export const COURSE = [
     ],
   },
 ];
-COURSE.push(...MORE);
+COURSE.push(...MORE, ...MORE2);
 
 // Kvarter som visas på kartan men inte är byggda än
 export const FUTURE = [];

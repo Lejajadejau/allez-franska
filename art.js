@@ -86,7 +86,7 @@ function person(x, y, o = {}) {
   const s = o.s || 1, k = Math.round(x * 3 + y);
   const skin = o.skin || pick(SKIN, k), top = o.top || pick(CLOTH, k), legs = o.legs || pick(['#2f3b52', '#5a4636', '#3d4f6b', '#6b6b6b'], k >> 1);
   const hair = o.hair || pick(['#3d2c29', '#8a5a44', '#d9a441', '#1f1a17', '#b8b2a8'], k >> 2);
-  let g = `<g class="${o.cls || 'a-sway'}" transform="translate(${x} ${y}) scale(${s})">`;
+  let g = `<g transform="translate(${x} ${y})"><g class="${o.cls || 'a-sway'}"><g transform="scale(${s})">`;
   g += `<ellipse cx="0" cy="0" rx="7" ry="1.6" fill="#000" opacity=".12"/>`;
   g += `<rect x="-4" y="-13" width="3.2" height="13" rx="1.4" fill="${legs}"/><rect x="0.8" y="-13" width="3.2" height="13" rx="1.4" fill="${legs}"/>`;
   g += o.dress ? `<path d="M-6 -11 L-4 -26 h8 L6 -11z" fill="${top}" stroke="${INK}" stroke-width=".8"/>` : `<rect x="-5" y="-26" width="10" height="14" rx="3.5" fill="${top}" stroke="${INK}" stroke-width=".8"/>`;
@@ -97,7 +97,7 @@ function person(x, y, o = {}) {
   if (o.item === 'suitcase') g += `<rect x="5" y="-12" width="9" height="11" rx="1.5" fill="#8a5a44" stroke="${INK}" stroke-width=".7"/><path d="M7.5 -12 v-2 h4 v2" fill="none" stroke="${INK}" stroke-width=".7"/>`;
   if (o.item === 'balloon') g += `<line x1="5" y1="-20" x2="9" y2="-44" stroke="${INK}" stroke-width=".5"/><ellipse cx="9" cy="-48" rx="4.5" ry="5.5" fill="${pick(CLOTH, k + 3)}" stroke="${INK}" stroke-width=".6"/>`;
   if (o.item === 'arms') g += `<path d="M-5 -24 l-5 -8 M5 -24 l5 -8" stroke="${top}" stroke-width="3" stroke-linecap="round"/>`;
-  return g + `</g>`;
+  return g + `</g></g></g>`;
 }
 // Sittande person (kafé, bänk)
 function sitter(x, y, o = {}) {
@@ -157,6 +157,9 @@ const EXTRA = {
   anniversaire: { back: '', front: () => person(70, 196, { item: 'balloon', s: 1.5 }) + person(112, 198, { dress: 1, s: 1.45, hair: '#e8e6e2', top: '#b48ad6' }) + person(250, 198, { s: 1.5, item: 'arms', cls: 'a-dance' }) + person(288, 197, { dress: 1, s: 1.45 }) + person(322, 199, { s: 1.05, item: 'arms', cls: 'a-dance' }) + cat(200, 198) },
   mairie: { back: '', front: () => person(130, 198, { hat: '#3f4f80' }) + person(146, 199, { dress: 1, item: 'bag' }) + person(230, 198, { item: 'arms' }) + person(250, 199, { s: .72 }) + bench(300, 198) + tree(40, 185, .8) + dog(330, 199) + flyingGulls() },
   festival: { back: '', front: () => '' },
+  vignoble: { back: '', front: () => person(96, 196, { item: 'bag', top: '#6f9a5b' }) + person(250, 194, { s: .8, item: 'arms', top: '#e3a33b' }) + person(300, 196, { dress: 1, top: '#7a3e6b' }) + dog(330, 197, '#c49a6c') + flyingGulls() },
+  tribunal: { back: '', front: () => person(70, 198, { top: '#22252f', item: 'bag' }) + person(96, 199, { dress: 1, top: '#4a4f63' }) + person(268, 198, { hat: '#1f2f44', top: '#1f2f44' }) + person(294, 199, { item: 'arms' }) + bench(330, 198) + tree(20, 184, .8) },
+  noel: { back: '', front: () => '' },
 };
 
 // ---------- Scener ----------
@@ -485,6 +488,67 @@ function festival() {
   return s + `</svg>`;
 }
 
+function vignoble() {
+  let s = svgOpen('#bcd7e8', '#f3e9cf') + cloud(70, 26) + cloud(290, 34, 0.8);
+  s += `<path d="M0 104 Q90 64 180 92 T360 80 V200 H0z" fill="#c9d79a" stroke="${INK}" stroke-width="1.6"/>`;
+  s += `<path d="M0 132 Q120 102 240 124 T360 116 V200 H0z" fill="#b6c983" stroke="${INK}" stroke-width="1.4"/>`;
+  // gården
+  s += `<rect x="232" y="64" width="84" height="46" fill="#f1dcc4" stroke="${INK}" stroke-width="2"/><polygon points="226,64 274,40 322,64" fill="#a8603f" stroke="${INK}" stroke-width="2"/>`;
+  s += `<path d="M262 110 v-22 q12 -10 24 0 v22z" fill="#7a3e6b" stroke="${INK}" stroke-width="1.6"/><rect x="244" y="74" width="12" height="12" fill="#cfe4ec" stroke="${INK}" stroke-width="1.4"/><rect x="294" y="74" width="12" height="12" fill="#cfe4ec" stroke="${INK}" stroke-width="1.4"/>`;
+  s += sign(230, 112, 92, 'DOMAINE VIDAL', '#7a3e6b', '#f6e3b4', 7.5);
+  // vinrader i perspektiv
+  for (let r = 0; r < 5; r++) {
+    const y = 140 + r * 13, sc = .6 + r * .12;
+    for (let i = 0; i < 12; i++) {
+      const x = -6 + i * 32 + (r % 2) * 14;
+      s += `<line x1="${x}" y1="${y + 6}" x2="${x}" y2="${y - 6 * sc}" stroke="#7a5240" stroke-width="${1.4 * sc}"/>`;
+      s += `<ellipse cx="${x}" cy="${y - 6 * sc}" rx="${12 * sc}" ry="${6 * sc}" fill="${['#6f9a5b', '#7fae5e', '#5f8a4b'][(i + r) % 3]}" stroke="${INK}" stroke-width=".8"/>`;
+      if ((i + r) % 2) s += `<circle cx="${x + 4 * sc}" cy="${y - 2 * sc}" r="${2.6 * sc}" fill="#7a3e6b"/><circle cx="${x + 7 * sc}" cy="${y}" r="${2.6 * sc}" fill="#7a3e6b"/>`;
+    }
+  }
+  s += `<g transform="translate(170 192)"><path d="M-16 -16 h32 l-4 16 h-24z" fill="#c9a26a" stroke="${INK}" stroke-width="1.4"/>${[-8, 0, 8, -4, 4].map((x, k) => `<circle cx="${x}" cy="${-18 - (k > 2 ? 5 : 0)}" r="4" fill="#7a3e6b" stroke="${INK}" stroke-width=".8"/>`).join('')}</g>`;
+  s += `<g transform="translate(40 108)"><rect x="-14" y="-10" width="28" height="12" rx="3" fill="#c8553d" stroke="${INK}" stroke-width="1.3"/><rect x="2" y="-20" width="12" height="10" fill="#cfe4ec" stroke="${INK}" stroke-width="1.2"/><circle cx="-8" cy="4" r="6" fill="#3d2c29"/><circle cx="10" cy="5" r="4" fill="#3d2c29"/></g>`;
+  return s + `</svg>`;
+}
+
+function tribunal() {
+  let s = svgOpen('#c4d3e0', '#ecebe4') + cloud(50, 30, 0.9) + cloud(300, 24, 0.7);
+  s += house(0, 100, 56, 76, { plaster: '#e8dcc0' }) + house(304, 104, 56, 72);
+  s += `<rect x="64" y="160" width="232" height="16" fill="#ddd6c6" stroke="${INK}" stroke-width="1.6"/><rect x="74" y="150" width="212" height="10" fill="#e6e0d2" stroke="${INK}" stroke-width="1.4"/>`;
+  s += `<rect x="84" y="78" width="192" height="72" fill="#efeae0" stroke="${INK}" stroke-width="2"/>`;
+  s += `<polygon points="74,78 180,36 286,78" fill="#e6e0d2" stroke="${INK}" stroke-width="2"/><polygon points="98,72 180,44 262,72" fill="none" stroke="${INK}" stroke-width="1"/>`;
+  for (let i = 0; i < 6; i++) { const x = 96 + i * 34; s += `<rect x="${x}" y="84" width="14" height="66" fill="#f8f4ec" stroke="${INK}" stroke-width="1.3"/><rect x="${x - 3}" y="80" width="20" height="5" fill="#ddd6c6" stroke="${INK}" stroke-width="1"/>`; }
+  s += `<rect x="96" y="66" width="168" height="12" fill="#4a4f63" stroke="${INK}" stroke-width="1.4"/><text x="180" y="75.5" text-anchor="middle" font-size="8.5" font-family="Fraunces,Georgia,serif" font-weight="700" fill="#f6e3b4" letter-spacing="1.5">PALAIS DE JUSTICE</text>`;
+  // våg
+  s += `<g transform="translate(180 58)"><line x1="0" y1="-10" x2="0" y2="4" stroke="#c9a26a" stroke-width="1.6"/><line x1="-12" y1="-8" x2="12" y2="-8" stroke="#c9a26a" stroke-width="1.6"/><path d="M-16 -2 q4 4 8 0 l-4 -6z M8 -2 q4 4 8 0 l-4 -6z" fill="#e3c38b" stroke="${INK}" stroke-width=".8"/></g>`;
+  s += `<path d="M168 150 v-30 q12 -10 24 0 v30z" fill="#30344a" stroke="${INK}" stroke-width="1.6"/>`;
+  s += `<line x1="70" y1="160" x2="70" y2="110" stroke="${INK}" stroke-width="1.6"/><rect x="70" y="110" width="14" height="10" fill="#3f5a74"/><rect x="84" y="110" width="0" height="10"/>`;
+  s += cobbles(176, 360, 24);
+  return s + `</svg>`;
+}
+
+function noel() {
+  let s = svgOpen('#1d2b4a', '#4a5a7a');
+  for (let i = 0; i < 22; i++) s += `<circle cx="${(i * 67) % 360}" cy="${(i * 29) % 60 + 6}" r="1.2" fill="#fbf3e4" opacity=".8"/>`;
+  s += `<rect x="0" y="150" width="360" height="50" fill="#e9eef3"/>`;
+  s += house(0, 82, 60, 70, { plaster: '#e8dcc0' }) + house(300, 86, 60, 66, { plaster: '#f1dcc4' });
+  // granen
+  s += `<g transform="translate(180 152)"><rect x="-6" y="-8" width="12" height="10" fill="#7a5240" stroke="${INK}" stroke-width="1.4"/>`;
+  [[-8, 46, -60], [-38, 36, -86], [-66, 26, -110]].forEach(([y, w, top]) => { s += `<polygon points="${-w},${y} 0,${top} ${w},${y}" fill="#2f6b4f" stroke="${INK}" stroke-width="1.6"/>`; });
+  for (let i = 0; i < 14; i++) { const a = i * 2.4, y = -20 - (i * 7) % 84, x = Math.sin(a) * (40 - (-y) * .38); s += `<circle class="a-blink" style="animation-delay:${-(i % 4) * .5}s" cx="${x}" cy="${y}" r="2.6" fill="${['#f2c46d', '#c8553d', '#7fd0e8', '#fbf3e4'][i % 4]}"/>`; }
+  s += `<path d="M0 -122 l4 9 l10 1 l-8 6 l3 10 l-9 -6 l-9 6 l3 -10 l-8 -6 l10 -1z" fill="#f2c46d" stroke="${INK}" stroke-width="1.2"/><circle class="a-blink" cx="0" cy="-114" r="14" fill="#fff6b0" opacity=".35"/></g>`;
+  // stånd
+  const chalet = (x, label, c) => `<g transform="translate(${x} 156)"><rect x="-30" y="-36" width="60" height="36" fill="#a8744f" stroke="${INK}" stroke-width="1.5"/><path d="M-36 -36 l36 -20 l36 20z" fill="#fbfbf7" stroke="${INK}" stroke-width="1.5"/><rect x="-24" y="-28" width="48" height="16" fill="#f6e3b4" stroke="${INK}" stroke-width="1.2"/><text x="0" y="-16.5" text-anchor="middle" font-size="7.5" font-family="Nunito,sans-serif" font-weight="900" fill="${c}">${label}</text><path d="M-30 -36 q10 6 20 0 q10 6 20 0 q10 6 20 0" fill="none" stroke="#f2c46d" stroke-width="1.4" stroke-dasharray="1 3"/></g>`;
+  s += chalet(76, 'MARRONS', '#7a3a1a') + chalet(284, 'CADEAUX', '#2f6b4f');
+  // girlang över torget
+  s += `<path d="M60 84 Q180 116 300 86" fill="none" stroke="#1a1530" stroke-width="1"/>`;
+  for (let i = 0; i < 14; i++) { const t = i / 13, x = 60 + t * 240, y = 84 + Math.sin(t * Math.PI) * 26 + 3; s += `<circle class="a-blink" style="animation-delay:${-(i % 3) * .7}s" cx="${x}" cy="${y}" r="2.2" fill="${['#f2c46d', '#c8553d', '#9be08a'][i % 3]}"/>`; }
+  // snöflingor
+  for (let i = 0; i < 26; i++) s += `<circle class="a-snow" style="animation-delay:${-(i * .37) % 6}s" cx="${(i * 41) % 360}" cy="${(i * 53) % 150}" r="${1.2 + (i % 3) * .6}" fill="#fff" opacity=".9"/>`;
+  for (let i = 0; i < 9; i++) s += person(24 + i * 40 + (i % 2) * 6, 198 - (i % 2) * 2, { s: 1, item: i === 3 ? 'bag' : i === 6 ? 'balloon' : '', dress: i % 3 === 1, hat: i % 4 === 0 ? '#c8553d' : '', top: CLOTH[(i * 3) % CLOTH.length], skin: SKIN[i % SKIN.length], cls: 'a-sway' });
+  return s + `</svg>`;
+}
+
 function enrich(id, svg) {
   const e = EXTRA[id]; if (!svg || !e) return svg;
   if (e.back) { const i = svg.indexOf('/>', svg.indexOf('fill="url(#sky')); if (i > 0) svg = svg.slice(0, i + 2) + e.back + svg.slice(i + 2); }
@@ -492,7 +556,7 @@ function enrich(id, svg) {
   return svg.slice(0, j) + f + svg.slice(j);
 }
 export function scene(id) {
-  return enrich(id, ({ boulangerie, marche, tram: tramScene, police, port, ecole, cafe, gare, medecin, hotel, poste, plage, anniversaire, mairie, festival })[id]?.() || '');
+  return enrich(id, ({ boulangerie, marche, tram: tramScene, police, port, ecole, cafe, gare, medecin, hotel, poste, plage, anniversaire, mairie, festival, vignoble, tribunal, noel })[id]?.() || '');
 }
 
 // Stadssilhuett till startsidan
@@ -676,6 +740,35 @@ export function character(id, mood = 'happy') {
       <path d="M28 44 q-2 -26 22 -26 q24 0 22 26 q-4 -10 -10 -12 l-4 6 l-4 -8 l-6 6 l-4 -8 q-10 4 -16 16z" fill="#6b3a28" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
       ${face}
       <path d="M42 62 q8 4 16 0" fill="none" stroke="#6b3a28" stroke-width="2"/>`;
+  } else if (id === 'vidal') {
+    body = `
+      <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#6f9a5b" stroke="${INK}" stroke-width="2"/>
+      <path d="M32 132 v-38 q18 -6 36 0 v38z" fill="#7a3e6b" stroke="${INK}" stroke-width="1.8"/>
+      <path d="M40 78 l10 8 l10 -8" fill="none" stroke="#fbf7ee" stroke-width="2"/>
+      <path d="M26 58 q-8 -40 24 -40 q32 0 24 40 q-2 14 -6 20 q2 -28 -18 -34 q-20 6 -18 34 q-4 -6 -6 -20z" fill="#8a5a44" stroke="${INK}" stroke-width="2"/>
+      ${face}
+      <path d="M22 34 q28 -26 56 0 q-28 -8 -56 0z" fill="#e8d3a0" stroke="${INK}" stroke-width="1.8"/><ellipse cx="50" cy="34" rx="34" ry="5" fill="#e8d3a0" stroke="${INK}" stroke-width="1.8"/><path d="M30 33 h40" stroke="#7a3e6b" stroke-width="3"/>
+      <g transform="translate(80 100)"><path d="M-2 -14 q6 -6 10 0" fill="none" stroke="#6f9a5b" stroke-width="2"/>${[[0, 0], [7, 0], [3.5, 6], [10.5, 6], [7, 12], [0, 12], [3.5, 18]].map(([x, y]) => `<circle cx="${x}" cy="${y - 6}" r="4" fill="#7a3e6b" stroke="${INK}" stroke-width="1"/>`).join('')}</g>`;
+  } else if (id === 'mercier') {
+    body = `
+      <path d="M20 132 q4 -56 30 -60 q26 4 30 60z" fill="#22252f" stroke="${INK}" stroke-width="2"/>
+      <path d="M42 74 h16 l-2 22 h-12z" fill="#fbfbf7" stroke="${INK}" stroke-width="1.4"/>
+      <path d="M44 76 q6 6 12 0 v6 q-6 4 -12 0z" fill="#fbfbf7" stroke="${INK}" stroke-width="1"/>
+      <path d="M30 100 q20 6 40 0" fill="none" stroke="#c8553d" stroke-width="3"/>
+      <path d="M28 52 q-6 -34 22 -34 q28 0 22 34 q-2 -18 -22 -20 q-20 2 -22 20z" fill="#d9d4cc" stroke="${INK}" stroke-width="2"/><circle cx="50" cy="20" r="8" fill="#d9d4cc" stroke="${INK}" stroke-width="1.8"/>
+      ${face}
+      <circle cx="42" cy="46" r="6" fill="none" stroke="${INK}" stroke-width="1.4"/><circle cx="58" cy="46" r="6" fill="none" stroke="${INK}" stroke-width="1.4"/><path d="M48 46 h4" stroke="${INK}" stroke-width="1.4"/>
+      <g transform="translate(80 104) rotate(-20)"><rect x="-4" y="-14" width="8" height="28" rx="2" fill="#8a5a44" stroke="${INK}" stroke-width="1.4"/><rect x="-10" y="-20" width="20" height="9" rx="2" fill="#a8744f" stroke="${INK}" stroke-width="1.4"/></g>`;
+  } else if (id === 'nicolas') {
+    body = `
+      <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#2f6b4f" stroke="${INK}" stroke-width="2"/>
+      <path d="M22 116 q28 8 56 0" fill="none" stroke="#c8553d" stroke-width="7"/><path d="M22 116 q28 8 56 0" fill="none" stroke="#fbf7ee" stroke-width="2" stroke-dasharray="4 4"/>
+      <path d="M34 66 q16 26 32 0 q-2 14 -16 20 q-14 -6 -16 -20z" fill="#f3efe6" stroke="${INK}" stroke-width="1.6"/>
+      ${face}
+      <path d="M36 62 q14 12 28 0" fill="none" stroke="#f3efe6" stroke-width="5" stroke-linecap="round"/>
+      <path d="M26 40 q4 -26 30 -24 q18 2 24 18 l8 14 q-30 -10 -62 -8z" fill="#c8553d" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+      <rect x="24" y="36" width="54" height="8" rx="4" fill="#f3efe6" stroke="${INK}" stroke-width="1.6"/><circle cx="88" cy="50" r="6" fill="#f3efe6" stroke="${INK}" stroke-width="1.6"/>
+      <g transform="translate(80 104)"><path d="M-12 -6 l12 22 l12 -22z" fill="#c9a26a" stroke="${INK}" stroke-width="1.4"/><circle cx="-5" cy="-8" r="4" fill="#7a4a2a" stroke="${INK}" stroke-width="1"/><circle cx="3" cy="-9" r="4" fill="#8a5a3a" stroke="${INK}" stroke-width="1"/><circle cx="-1" cy="-13" r="4" fill="#6b3f22" stroke="${INK}" stroke-width="1"/></g>`;
   } else if (id === 'you') {
     body = `
       <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#f2c46d" stroke="${INK}" stroke-width="2"/>
@@ -691,7 +784,7 @@ export function character(id, mood = 'happy') {
 
 // ---------- Stadskarta över Port-Saint-Clément ----------
 // units: [{fr, color, state: 'done'|'cur'|'open'|'locked'}], i kursordning
-const MAP_POS = [[46, 236], [92, 214], [140, 228], [186, 206], [232, 222], [212, 172], [160, 160], [106, 150], [54, 128], [96, 96], [150, 108], [204, 90], [170, 52], [114, 44], [60, 62]];
+const MAP_POS = [[46, 236], [92, 214], [140, 228], [186, 206], [232, 222], [212, 172], [160, 160], [106, 150], [54, 128], [96, 96], [150, 108], [204, 90], [170, 52], [114, 44], [60, 62], [22, 100], [28, 38], [84, 28]];
 export function townMap(units) {
   const W = 360, H = 270;
   let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="town-map" role="img" aria-label="Karta över Port-Saint-Clément">`;
@@ -700,7 +793,7 @@ export function townMap(units) {
   s += `<path d="M0 0 H250 Q236 40 252 80 T246 160 Q232 200 256 236 L270 270 H0z" fill="#d9e7b8" stroke="${INK}" stroke-width="2"/>`;
   s += `<path d="M0 0 H250 Q236 40 252 80 T246 160 Q232 200 256 236 L270 270 H0z" fill="none" stroke="#efe2b0" stroke-width="6" opacity=".9" transform="translate(4 0)"/>`;
   // skog, kullar, åker
-  [[20, 20], [34, 30], [200, 30], [216, 18], [28, 180], [14, 196], [228, 130]].forEach(([x, y]) => s += `<circle cx="${x}" cy="${y}" r="9" fill="#8fb86a" stroke="${INK}" stroke-width="1"/>`);
+  [[150, 16], [176, 22], [200, 30], [216, 18], [28, 180], [14, 196], [228, 130]].forEach(([x, y]) => s += `<circle cx="${x}" cy="${y}" r="9" fill="#8fb86a" stroke="${INK}" stroke-width="1"/>`);
   s += `<path d="M120 0 q30 22 6 40" fill="none" stroke="#7fb4d0" stroke-width="7" stroke-linecap="round"/>`;
   // vägen genom kvarteren
   const pts = MAP_POS.slice(0, units.length);

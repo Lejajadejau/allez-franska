@@ -4,6 +4,10 @@ import * as ART from './art.js';
 import { STORIES } from './stories.js';
 import { PH } from './audiomap.js';
 import { SERIAL } from './serial.js';
+import { SERIAL2 } from './serial2.js';
+const SEASONS = [SERIAL, SERIAL2];
+const EPS = SEASONS.flatMap((se, si) => se.eps.map(e => (e.season = si, e)));
+const epNo = ep => SEASONS[ep.season].eps.indexOf(ep) + 1;
 import { SV } from './svmap.js';
 
 // ================= Hjälpfunktioner =================
@@ -500,7 +504,7 @@ function renderHome() {
   $$('[data-jump]').forEach(b => b.onclick = () => jumpSheet(+b.dataset.jump));
   const p = $('#practice'); if (p) p.onclick = startPractice;
   const lb = $('#listenB'); if (lb) lb.onclick = () => startListen();
-  const sc = $('#serialB'); if (sc) sc.onclick = serialSheet;
+  const sc = $('#serialB'); if (sc) sc.onclick = () => serialSheet();
   const rv = $('#reviewB'); if (rv) rv.onclick = startReview;
   watchAmbience();
   const curEl = $('.node.cur'); if (curEl && !renderHome.scrolled) { renderHome.scrolled = true; setTimeout(() => curEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 150); }
@@ -756,7 +760,7 @@ function allAudioUrls(units) {
     const un = COURSE[u]; addTxt(un.welcome); un.tips.forEach(t => addTxt(t.fr));
     un.lessons.forEach(l => { l.words.forEach(w => addTxt(w.fr)); l.sentences.forEach(x => addTxt(x.fr)); l.story?.lines.forEach(x => addTxt(x.fr)); });
     (STORIES[un.id] || []).forEach(st => st.lines.forEach((_, i) => urls.add(lineUrl(st, i))));
-    SERIAL.eps.filter(ep => ep.u === u).forEach(st => st.lines.forEach((_, i) => urls.add(lineUrl(st, i))));
+    EPS.filter(ep => ep.u === u).forEach(st => st.lines.forEach((_, i) => urls.add(lineUrl(st, i))));
     urls.add(ambUrl(un.id));
     un.lessons.forEach(l => [...l.words, ...l.sentences].forEach(x => { const u2 = svUrl(String(x.sv).split('|')[0]); if (u2) urls.add(u2); }));
   });
@@ -1034,8 +1038,10 @@ function finish(completed) {
     const sr = ser(), first = !sr.done[L.st.id]; sr.done[L.st.id] = true; if (first) sr.lastNewDay = dayKey();
     xp = 10 + (L.mistakes === 0 ? 5 : 0); ecus = first ? 15 : 3;
     title = 'Épisode terminé !';
-    const ni = SERIAL.eps.indexOf(L.st) + 1;
-    extra = first ? (ni < SERIAL.eps.length ? `<p class="unlock">🗝️ Nästa avsnitt kommer i morgon${unitUnlocked(SERIAL.eps[ni].u) ? '' : ` – när du har kommit till ${esc(COURSE[SERIAL.eps[ni].u].fr)}`}.</p>` : '<p class="unlock">🗼 Mysteriet är löst! Fyren lyser igen.</p>') : '';
+    const ni = EPS.indexOf(L.st) + 1, nx = EPS[ni], endS = !nx || nx.season !== L.st.season;
+    const fin = ['🗼 Mysteriet är löst! Fyren lyser igen.', '⭐ Stjärnan är tillbaka i granen. God jul!'][L.st.season] || '';
+    extra = !first ? '' : endS ? `<p class="unlock">${fin}${nx ? ` I morgon börjar säsong ${nx.season + 1}: <i>${esc(SEASONS[nx.season].title)}</i>.` : ''}</p>`
+      : `<p class="unlock">🗝️ Nästa avsnitt kommer i morgon${unitUnlocked(nx.u) ? '' : ` – när du har kommit till ${esc(COURSE[nx.u].fr)}`}.</p>`;
   } else if (L.kind === 'story') {
     char = COURSE[L.u].character;
     S.stories = S.stories || {}; const first = !S.stories[L.st.id]; S.stories[L.st.id] = true;
@@ -1173,7 +1179,7 @@ function startStoryObj(st, u, serial) {
     <div class="ltop"><button class="x" id="quit" aria-label="Avsluta">✕</button><div class="pbar big"><i style="width:0%"></i></div>
       <button class="txt-t ${L.showAll ? 'on' : ''}" id="txtT" aria-label="Visa all text">Aa</button></div>
     <div class="lbody">
-      <p class="kind">${serial ? `Följetong · Avsnitt ${SERIAL.eps.indexOf(st) + 1}` : `Lyssna · ${esc(un.fr)}`}</p><h2 class="q">${esc(st.title)}</h2>
+      <p class="kind">${serial ? `Följetong${st.season ? ' · Säsong ' + (st.season + 1) : ''} · Avsnitt ${epNo(st)}` : `Lyssna · ${esc(un.fr)}`}</p><h2 class="q">${esc(st.title)}</h2>
       <div class="cast">${castHtml(st)}</div>
       <div class="sdlg" id="sdlg"></div><div id="sq"></div>
     </div>
@@ -1458,39 +1464,46 @@ document.addEventListener('keydown', e => {
 // ================= Följetong =================
 const ser = () => (S.serial = S.serial || { done: {}, lastNewDay: '' });
 function epState(i) {
-  const ep = SERIAL.eps[i], s = ser();
+  const ep = EPS[i], s = ser();
   if (s.done[ep.id]) return 'done';
-  if (i > 0 && !s.done[SERIAL.eps[i - 1].id]) return 'later';
+  if (i > 0 && !s.done[EPS[i - 1].id]) return 'later';
   if (!unitUnlocked(ep.u)) return 'unit';
   if (s.lastNewDay === dayKey()) return 'tomorrow';
   return 'open';
 }
-const nextEp = () => SERIAL.eps.findIndex((_, i) => epState(i) !== 'done');
+const nextEp = () => EPS.findIndex((_, i) => epState(i) !== 'done');
+const curSeason = () => { const i = nextEp(); return i < 0 ? SEASONS.length - 1 : EPS[i].season; };
+const SEASON_IC = ['🗝️', '⭐'];
 function serialCard() {
-  const s = ser(), n = SERIAL.eps.filter(e => s.done[e.id]).length, i = nextEp();
+  const s = ser(), i = nextEp(), si = curSeason(), se = SEASONS[si], n = se.eps.filter(e => s.done[e.id]).length;
   let txt, hot = false;
-  if (i < 0) txt = 'Alla avsnitt klara – mysteriet är löst! 🗼';
+  if (i < 0) txt = 'Alla avsnitt klara – stjärnan lyser i granen! ⭐';
   else {
-    const st = epState(i), ep = SERIAL.eps[i];
-    if (st === 'open') { txt = `${n ? 'Nytt avsnitt' : 'Första avsnittet'}: <i>${esc(ep.title)}</i>`; hot = true; }
-    else if (st === 'tomorrow') txt = 'Nästa avsnitt kommer i morgon 🌙';
+    const st = epState(i), ep = EPS[i];
+    if (st === 'open') { txt = `${n ? 'Nytt avsnitt' : si ? 'Ny säsong' : 'Första avsnittet'}: <i>${esc(ep.title)}</i>`; hot = true; }
+    else if (st === 'tomorrow') txt = n ? 'Nästa avsnitt kommer i morgon 🌙' : `Säsong ${si + 1} börjar i morgon 🌙`;
     else txt = `Nästa avsnitt utspelar sig i ${esc(COURSE[ep.u].fr)} – ta dig dit först`;
   }
-  return `<button class="card serialcard ${hot ? 'hot' : ''}" id="serialB"><span class="sc-ic">🗝️</span>
-    <span class="sc-t"><small>Följetong · ${n}/${SERIAL.eps.length}</small><b>${esc(SERIAL.title)}</b><span class="muted small">${txt}</span></span>${hot ? '<span class="sc-new">NY</span>' : ''}</button>`;
+  return `<button class="card serialcard ${hot ? 'hot' : ''}" id="serialB"><span class="sc-ic">${SEASON_IC[si]}</span>
+    <span class="sc-t"><small>Följetong${si ? ` · Säsong ${si + 1}` : ''} · ${n}/${se.eps.length}</small><b>${esc(se.title)}</b><span class="muted small">${txt}</span></span>${hot ? '<span class="sc-new">NY</span>' : ''}</button>`;
 }
-function serialSheet() {
-  const s = ser(), n = SERIAL.eps.filter(e => s.done[e.id]).length;
-  sheet(`<div class="ns-head" style="--uc:#3f5a74"><small>Följetong · ${n} av ${SERIAL.eps.length} avsnitt</small><h2>${esc(SERIAL.title)}</h2><p>${esc(SERIAL.sv)}</p></div>
-    <p class="muted small">${esc(SERIAL.intro)} Ett nytt avsnitt per dag.</p>
-    <div class="ep-list">${SERIAL.eps.map((ep, i) => {
-      const st = epState(i), on = st === 'done' || st === 'open';
+function serialSheet(si = curSeason()) {
+  const s = ser(), se = SEASONS[si], n = se.eps.filter(e => s.done[e.id]).length;
+  const s1done = SERIAL.eps.every(e => s.done[e.id]);
+  const tabs = s1done ? `<div class="chips season-tabs">${SEASONS.map((x, k) => `<button class="chip ${k === si ? 'on' : ''}" data-season="${k}">${SEASON_IC[k]} Säsong ${k + 1}</button>`).join('')}</div>` : '';
+  sheet(`<div class="ns-head" style="--uc:${si ? '#2f6b4f' : '#3f5a74'}"><small>Följetong${si ? ` · Säsong ${si + 1}` : ''} · ${n} av ${se.eps.length} avsnitt</small><h2>${esc(se.title)}</h2><p>${esc(se.sv)}</p></div>
+    ${tabs}<p class="muted small">${esc(se.intro)} Ett nytt avsnitt per dag.</p>
+    <div class="ep-list">${se.eps.map((ep, k) => {
+      const i = EPS.indexOf(ep), st = epState(i), on = st === 'done' || st === 'open';
       const why = { later: '', unit: ' · öppnas när du når kvarteret', tomorrow: ' · i morgon' }[st] || '';
       return `<button class="ep ${st}" data-ep="${i}" ${on ? '' : 'disabled'}><span class="ep-n">${st === 'done' ? '✓' : st === 'open' ? '▶' : '🔒'}</span>
-        <span class="ep-t"><b>${i + 1}. ${on ? esc(ep.title) : '· · ·'}</b><small>${on ? esc(ep.sv) + ' · ' : ''}${esc(COURSE[ep.u].fr)}${why}</small></span></button>`;
+        <span class="ep-t"><b>${k + 1}. ${on ? esc(ep.title) : '· · ·'}</b><small>${on ? esc(ep.sv) + ' · ' : ''}${esc(COURSE[ep.u].fr)}${why}</small></span></button>`;
     }).join('')}</div>
     <button class="btn ghost" data-close>Stäng</button>`,
-    (w, close) => $$('[data-ep]', w).forEach(b => b.onclick = () => { close(); const ep = SERIAL.eps[+b.dataset.ep]; startStoryObj(ep, ep.u, true); }));
+    (w, close) => {
+      $$('[data-ep]', w).forEach(b => b.onclick = () => { close(); const ep = EPS[+b.dataset.ep]; startStoryObj(ep, ep.u, true); });
+      $$('[data-season]', w).forEach(b => b.onclick = () => { close(); setTimeout(() => serialSheet(+b.dataset.season), 50); });
+    });
 }
 
 // ================= Bakgrundsljud =================

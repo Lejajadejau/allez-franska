@@ -363,6 +363,8 @@ textarea:focus, input:focus { outline: none; border-color: #8db3d4; }
 .scene svg .a-smoke { animation: smoke 5s ease-out infinite; transform-box: fill-box; transform-origin: bottom; }
 @keyframes smoke { 0% { opacity: 0; transform: translateY(6px) scale(.6); } 30% { opacity: .7; } 100% { opacity: 0; transform: translateY(-14px) scale(1.2); } }
 .scene svg .a-blink { animation: blink 2.4s ease-in-out infinite; }
+.scene svg .a-snow { animation: snow 6s linear infinite; transform-box: fill-box; }
+@keyframes snow { from { transform: translate(0, -160px); } to { transform: translate(14px, 60px); } }
 @keyframes blink { 50% { opacity: .1; } }
 .scene svg .a-sway { animation: sway 3.6s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
 @keyframes sway { 50% { transform: rotate(1.6deg); } }
