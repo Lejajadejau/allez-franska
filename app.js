@@ -737,7 +737,7 @@ function startSession(o) {
 function quitLesson() {
   sheet(`<div class="welcome">${ART.character('brioche', 'sad')}</div><h2>Vill du verkligen sluta?</h2><p>Du förlorar framstegen i den här lektionen.</p>
     <button class="btn primary" data-close>Fortsätt lära</button><button class="btn ghost" id="q">Avsluta</button>`,
-    (w, close) => $('#q', w).onclick = () => { close(); speechSynthesis?.cancel(); L = null; save(); go('home'); });
+    (w, close) => $('#q', w).onclick = () => { close(); speechSynthesis?.cancel(); storyAudio?.pause(); L = null; save(); go('home'); });
 }
 function livesHtml() {
   if (L.kind === 'test') return `<div class="lh">${'💛'.repeat(Math.max(0, L.lives))}${'🤍'.repeat(3 - Math.max(0, L.lives))}</div>`;
@@ -908,6 +908,29 @@ function storySheet(u, si) {
     <button class="btn primary" id="go">${done ? 'Lyssna igen +10 XP' : 'Starta +10 XP'}</button><button class="btn ghost" data-close>Stäng</button>`,
     (w, close) => $('#go', w).onclick = () => { close(); startStory(u, si); });
 }
+// Inspelade röster (ElevenLabs) – TTS som reserv
+const AUDIO_BASE = CONFIG.SUPABASE_URL ? CONFIG.SUPABASE_URL + '/storage/v1/object/public/audio/stories/' : '';
+const lineUrl = (st, idx) => AUDIO_BASE ? `${AUDIO_BASE}${st.id}-${idx}.mp3` : '';
+let storyAudio = null;
+const audioCache = {};
+function preloadLine(st, idx) {
+  const url = lineUrl(st, idx);
+  if (!url || idx >= st.lines.length || audioCache[url]) return;
+  const a = new Audio(); a.preload = 'auto'; a.src = url; audioCache[url] = a;
+}
+function playLine(st, idx, onend) {
+  const ln = st.lines[idx], url = lineUrl(st, idx);
+  let done = false; const fin = () => { if (!done) { done = true; onend?.(); } };
+  const tts = () => say(ln.fr, false, { ...storyVoice(st, ln.w), onend: fin });
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  if (!url) return tts();
+  if (!storyAudio) storyAudio = new Audio();
+  const a = storyAudio;
+  a.pause(); a.onended = fin; a.onerror = () => { if (!done) tts(); };
+  a.src = url;
+  const p = a.play();
+  if (p && p.catch) p.catch(() => { if (!done) tts(); });
+}
 function storyVoice(st, who) {
   const c = st.cast[who], other = st.cast[who === 'a' ? 'b' : 'a'];
   const voice = who === 'a' ? frVoices[0] : (frVoices[1] || frVoices[0]);
@@ -931,6 +954,7 @@ function startStory(u, si) {
     <div class="lfoot" id="lfoot"><button class="btn primary wide" id="snext">▶ Starta samtalet</button></div></div>`;
   $('#quit').onclick = quitLesson;
   $('#snext').onclick = storyNext;
+  preloadLine(st, 0);
   $('#txtT').onclick = () => { L.showAll = !L.showAll; S.storyText = L.showAll; save(false); $('#txtT').classList.toggle('on', L.showAll); $$('.sline .fr-t').forEach(t => t.classList.toggle('masked', !L.showAll && !t.dataset.rev)); };
 }
 function storyNext() {
@@ -948,18 +972,19 @@ function storyNext() {
     row.scrollIntoView({ block: 'end', behavior: 'smooth' });
     const btn = row.querySelector('.sline'), txt = row.querySelector('.fr-t');
     const reveal = () => { txt.dataset.rev = '1'; txt.classList.remove('masked'); };
-    const v = storyVoice(st, ln.w);
     let t;
-    btn.onclick = () => { if (txt.classList.contains('masked')) reveal(); say(ln.fr, false, v); };
+    btn.onclick = () => { if (txt.classList.contains('masked')) reveal(); playLine(st, idx); };
     btn.addEventListener('pointerdown', () => { t = setTimeout(() => btn.classList.add('tr'), 400); });
     ['pointerup', 'pointerleave'].forEach(e => btn.addEventListener(e, () => { clearTimeout(t); btn.classList.remove('tr'); }));
     btn.addEventListener('contextmenu', e => e.preventDefault());
     const nb = $('#snext'); nb.disabled = true; nb.textContent = '🔊 …';
-    say(ln.fr, false, { ...v, onend: () => {
+    playLine(st, idx, () => {
+      if (L?.st !== st) return;
       if (un.level === 'A1') reveal();
       const q = st.qs.find(q => q.at === idx);
       if (q) storyQuestion(q); else { nb.disabled = false; nb.textContent = L.i < st.lines.length ? 'Fortsätt ▶' : 'Klart ▶'; }
-    } });
+    });
+    preloadLine(st, idx + 1);
     $('.ltop .pbar i').style.width = Math.round(L.i / st.lines.length * 100) + '%';
     return;
   }
@@ -986,10 +1011,11 @@ function storySpeak(ln) {
   const nb = $('#snext'); nb.disabled = true; nb.textContent = 'Säg repliken';
   const box = $('#sq');
   box.innerHTML = `<div class="sq card"><p class="kind">Din tur</p><h3>Säg repliken högt</h3>
-    <div class="bubble"><button class="say-b" data-say="${esc(ln.fr)}">🔊</button><span class="fr-t">${esc(ln.fr)}</span></div>
+    <div class="bubble"><button class="say-b" id="sayRec">🔊</button><span class="fr-t">${esc(ln.fr)}</span></div>
     <button class="mic" id="mic">🎙️<span>Tryck och prata</span></button><p class="heard muted" id="heard"></p>
     <button class="link" id="skip">Hoppa över</button></div>`;
-  bindSay(box); box.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  $('#sayRec', box).onclick = () => playLine(L.st, L.st.lines.indexOf(ln));
+  box.scrollIntoView({ block: 'end', behavior: 'smooth' });
   const done = () => { nb.disabled = false; nb.textContent = 'Klart ▶'; };
   $('#skip', box).onclick = () => { done(); finish(true); };
   const target = norm(ln.fr, false).split(' ');

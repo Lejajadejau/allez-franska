@@ -1,5 +1,5 @@
 // Service worker: gör att appen startar snabbt och fungerar offline.
-const CACHE = 'allez-v6';
+const CACHE = 'allez-v7';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'content.js', 'art.js', 'stories.js', 'config.js', 'manifest.webmanifest', 'icons/icon-192.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
