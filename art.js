@@ -892,3 +892,27 @@ export function appIcon() {
   <text x="256" y="170" text-anchor="middle" font-family="Georgia,serif" font-weight="700" font-size="92" fill="#fbf3e4">Allez</text>
   </svg>`;
 }
+
+// Små stadsdetaljer längs stigen på startsidan (luftigt, en åt gången)
+function shopfront(x, y, w, h, c) {
+  let s = `<polygon points="${x - 3},${y} ${x + w / 2},${y - 20} ${x + w + 3},${y}" fill="#7c5f55" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`;
+  s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#f6e2c4" stroke="${INK}" stroke-width="2"/>`;
+  s += `<rect x="${x + 6}" y="${y + h * 0.45}" width="${w * 0.42}" height="${h * 0.42}" rx="2" class="win" fill="#a9d3e6" stroke="${INK}" stroke-width="1.5"/>`;
+  s += `<rect x="${x + w * 0.62}" y="${y + h * 0.4}" width="${w * 0.26}" height="${h * 0.6}" rx="3" fill="${c}" stroke="${INK}" stroke-width="1.5"/><circle cx="${x + w * 0.66}" cy="${y + h * 0.72}" r="1.4" fill="${INK}"/>`;
+  const n = 5, aw = (w + 8) / n;
+  for (let i = 0; i < n; i++) s += `<path d="M${x - 4 + i * aw} ${y + h * 0.3} h${aw} v8 q${-aw / 2} 6 ${-aw} 0 z" fill="${i % 2 ? '#fffaf0' : c}" stroke="${INK}" stroke-width="1"/>`;
+  s += `<rect x="${x + 4}" y="${y + 6}" width="${w - 8}" height="${h * 0.18}" rx="2" fill="${c}" stroke="${INK}" stroke-width="1"/>`;
+  return s;
+}
+export function decor(i, c = '#d9825b') {
+  const g = `<ellipse cx="55" cy="95" rx="46" ry="4" fill="#e8dcc4"/>`;
+  const parts = [
+    () => bush(14, 94) + shopfront(28, 42, 58, 50, c) + bush(98, 94),
+    () => lamp(40, 94) + bush(66, 94) + cat(78, 94),
+    () => tree(42, 94, 1.15) + bench(76, 94),
+    () => house(24, 50, 54, 42, { shutter: c }) + `<rect x="46" y="74" width="10" height="18" rx="2" fill="${c}" stroke="${INK}" stroke-width="1.5"/>` + bike(94, 94, c),
+    () => tree(28, 94, 0.9, '#7fae5e') + tree(70, 94, 1.05) + flowers(42, 88),
+    () => lamp(76, 94) + dog(40, 94) + bush(20, 94),
+  ];
+  return `<svg viewBox="0 0 110 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${g}${parts[i % parts.length]()}</svg>`;
+}

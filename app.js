@@ -575,6 +575,53 @@ function statInfo(kind) {
 
 // ================= Startsida: staden =================
 const OFFS = [0, 52, 78, 52, 0, -52, -78, -52];
+// En bild per lektion som visar vad den handlar om
+const LESSON_ICONS = {
+  b1: '👋', b2: '🥖', b3: '🙋', b4: '🪙', b5: '🥐',
+  m1: '🍎', m2: '🥕', m3: '🎨', m4: '🏷️', m5: '🧺',
+  t1: '🚋', t2: '🕰️', t3: '📅', t4: '🧭', t5: '🎫',
+  p1: '🆘', p2: '🕵️', p3: '🧥', p4: '📰', p5: '👮',
+  h1: '⛅', h2: '⛵', h3: '🎒', h4: '🦀', h5: '⚓',
+  e1: '👨‍👩‍👧', e2: '✏️', e3: '⚽', e4: '⏰', e5: '🏫',
+  c1: '☕', c2: '💭', c3: '⚖️', c4: '🌠', c5: '🫖',
+  ga1: '🎟️', ga2: '🕒', ga3: '🚆', ga4: '🗺️', ga5: '🧳',
+  me1: '🦵', me2: '🤒', me3: '💊', me4: '💡', me5: '🩺',
+  ho1: '🛎️', ho2: '🛏️', ho3: '🍳', ho4: '🔧', ho5: '🔑',
+  po1: '📮', po2: '✉️', po3: '📜', po4: '👥', po5: '📦',
+  pl1: '☀️', pl2: '⚠️', pl3: '🧒', pl4: '🐚', pl5: '🛟',
+  an1: '💌', an2: '🎈', an3: '🗓️', an4: '🎁', an5: '🎂',
+  ma1: '🏛️', ma2: '📋', ma3: '🤔', ma4: '🙏', ma5: '🗳️',
+  fe1: '🎪', fe2: '🎶', fe3: '🧩', fe4: '🌈', fe5: '🎆',
+  vi1: '🍇', vi2: '🌦️', vi3: '🍷', vi4: '👩‍🌾', vi5: '🥂',
+  tr1: '⚖️', tr2: '🗣️', tr3: '🤔', tr4: '🔨', tr5: '🐈',
+  no1: '🛖', no2: '🎁', no3: '🕯️', no4: '⭐', no5: '🎄',
+  ms1: '🚪', ms2: '🛋️', ms3: '🧹', ms4: '🪚', ms5: '🏡',
+  mg1: '🏬', mg2: '📏', mg3: '👗', mg4: '💳', mg5: '💻',
+};
+const lessonIcon = le => le.icon || LESSON_ICONS[le.id] || (le.words && le.words[0] && le.words[0].e) || '★';
+
+// Kullerstensgata som slingrar mellan knapparna
+function drawRoads() {
+  $$('.path').forEach(path => {
+    const svg = path.querySelector('.road'); if (!svg) return;
+    const W = path.clientWidth, H = path.scrollHeight;
+    const pts = $$('.node-row', path).map(row => {
+      const n = row.querySelector('.node');
+      return [row.offsetLeft + n.offsetLeft + n.offsetWidth / 2 + (+row.dataset.off || 0), row.offsetTop + n.offsetTop + n.offsetHeight / 2 + 4];
+    });
+    if (pts.length < 2) { svg.innerHTML = ''; return; }
+    pts.unshift([pts[0][0], 0]); pts.push([pts[pts.length - 1][0], H]);
+    let d = `M${pts[0][0]} ${pts[0][1]}`;
+    for (let i = 1; i < pts.length; i++) {
+      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], my = (y0 + y1) / 2;
+      d += ` C${x0} ${my} ${x1} ${my} ${x1} ${y1}`;
+    }
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', W); svg.setAttribute('height', H);
+    svg.innerHTML = `<path d="${d}" class="r-edge"/><path d="${d}" class="r-base"/><path d="${d}" class="r-stones"/><path d="${d}" class="r-stones2"/>`;
+  });
+}
+window.addEventListener('resize', () => { if ($('.road')) drawRoads(); });
+
 function renderHome() {
   const cur = currentNode();
   let html = `<section class="banner">${ART.skyline()}<div class="banner-t"><h1>Port-Saint-Clément</h1><p>Franska för familj och vänner</p></div></section>`;
@@ -603,22 +650,23 @@ function renderHome() {
       <div class="unit-head"><div><small>Kvarter ${u + 1} · ${un.level} · ${prog}</small><h2>${un.fr}</h2><p>${un.sv} – ${un.desc}</p></div>
       <button class="guide-b" data-guide="${u}" aria-label="Guidebok">📖</button></div>
       <div class="scene" data-scene="${un.id}">${ART.scene(un.id)}${!unlocked ? `<div class="lock-over"><span>🔒</span><button class="btn small" data-jump="${u}">Hoppa hit?</button></div>` : ''}</div>
-      <div class="path">`;
+      <div class="path"><svg class="road" aria-hidden="true"></svg>`;
     un.lessons.forEach((le, l) => {
       const c = crownsOf(le.id), open = lessonUnlocked(u, l), isCur = cur && cur[0] === u && cur[1] === l;
       const off = OFFS[l % OFFS.length];
-      const icon = !open ? '🔒' : c >= 3 ? '👑' : c >= 1 ? '★' : (le.story ? '💬' : '★');
-      html += `<div class="node-row" style="transform:translateX(${off}px)">
+      const icon = lessonIcon(le);
+      if (l >= 2 && l % 2 === 0) html += `<div class="decor-slot"><div class="decor ${off > 0 ? 'left' : 'right'}">${ART.decor(u * 3 + l, un.color)}</div></div>`;
+      html += `<div class="node-row" data-off="${off}" style="transform:translateX(${off}px)">
         ${isCur ? `<div class="start-tip">Börja!</div>` : ''}
-        <button class="node ${open ? 'open' : ''} ${c >= 1 ? 'done' : ''} ${c >= 3 ? 'gold' : ''} ${isCur ? 'cur' : ''}" data-u="${u}" data-l="${l}">${icon}</button>
+        <button class="node ${open ? 'open' : 'locked'} ${c >= 1 ? 'done' : ''} ${c >= 3 ? 'gold' : ''} ${isCur ? 'cur' : ''}" data-u="${u}" data-l="${l}" aria-label="${esc(le.title)}${!open ? ' (låst)' : ''}"><span class="ic">${icon}</span>${!open ? '<span class="lk">🔒</span>' : ''}</button>
         ${c ? `<div class="crowns">${'♛'.repeat(c)}</div>` : ''}
       </div>`;
       if (l === 1) html += `<div class="char-side ${off > 0 ? 'left' : 'right'}">${ART.character(un.character)}<span>${un.charName}</span></div>`;
       (STORIES[un.id] || []).forEach((st, si) => {
         if (st.after !== l) return;
         const sOpen = unitUnlocked(u) && crownsOf(le.id) >= 1, sDone = (S.stories || {})[st.id];
-        html += `<div class="node-row story-row" style="transform:translateX(${-off / 2}px)">
-          <button class="node story ${sOpen ? 'open' : ''} ${sDone ? 'done' : ''}" data-story="${u}:${si}" aria-label="Lyssna: ${esc(st.title)}">${!sOpen ? '🔒' : sDone ? '🎧' : '🎧'}</button>
+        html += `<div class="node-row story-row" data-off="${-off / 2}" style="transform:translateX(${-off / 2}px)">
+          <button class="node story ${sOpen ? 'open' : 'locked'} ${sDone ? 'done' : ''}" data-story="${u}:${si}" aria-label="Lyssna: ${esc(st.title)}"><span class="ic">🎧</span>${!sOpen ? '<span class="lk">🔒</span>' : ''}</button>
           <div class="story-lbl">${sDone ? '✓ ' : ''}Lyssna</div></div>`;
       });
     });
@@ -645,6 +693,7 @@ function renderHome() {
   const rv = $('#reviewB'); if (rv) rv.onclick = startReview;
   const ng = $('#nextGo'); if (ng) ng.onclick = () => ng.dataset.practice ? startPractice() : nodeSheet(cur[0], cur[1]);
   const ns = $('#nextShow'); if (ns) ns.onclick = () => { const el = $('.node.cur'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
+  drawRoads();
   watchAmbience();
   fillBuddyCard();
   const curEl = $('.node.cur'); if (curEl && !renderHome.scrolled) { renderHome.scrolled = true; setTimeout(() => curEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 150); }
