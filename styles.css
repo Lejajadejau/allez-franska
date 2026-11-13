@@ -521,3 +521,20 @@ body[data-tod="night"] .scene svg .lamp-glow { filter: blur(2px); }
 @keyframes flameGrow { 0% { transform: scale(.4); filter: saturate(.3); } 55% { transform: scale(.75); } 70% { transform: scale(1.25); filter: saturate(1.4); } 100% { transform: scale(1); filter: none; } }
 .big-n.bump { animation: pop .5s; }
 @media (prefers-reduced-motion: reduce) { .result.win .res-c, .res-char.cheer, .res-crown, .res-badge, .flame.grow, .pbar.big.hot2 i { animation: none !important; } }
+
+/* Kompissvit */
+.buddy { padding: 12px 14px; margin-bottom: 10px; }
+.buddy.loading-c { opacity: .6; }
+.bd-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.bd-plus { border: 0; background: none; color: var(--blue); font-weight: 700; font-size: .92rem; }
+.bd-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
+.bd-row .av { font-size: 1.5rem; }
+.bd-row .av.b2 { margin-left: -12px; }
+.bd-row .av:only-of-type { margin-left: 0; }
+.bd-t { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.bd-t span { font-size: .85rem; color: var(--ink2); }
+.bd-row.turn .bd-t span { color: #e0742c; font-weight: 700; }
+.bd-row.ok .bd-t span { color: var(--green-d); font-weight: 700; }
+.bd-n { font-weight: 700; font-size: 1.1rem; color: #e0742c; }
+.bd-x { border: 0; background: none; color: var(--ink2); font-size: 1rem; }
+.btn.small { padding: 6px 12px; font-size: .88rem; width: auto; margin: 0; }

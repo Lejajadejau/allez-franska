@@ -236,7 +236,7 @@ const HEART_MAX = 5, HEART_MS = 30 * 60 * 1000;
 const DEFAULT = {
   name: '', avatar: '🦊', xp: 0, weekKey: '', weekXp: 0, dayKey: '', dayXp: 0, dailyGoal: 20,
   streak: 0, lastActive: null, freezes: 0, hearts: HEART_MAX, heartsTs: Date.now(), ecus: 30,
-  crowns: {}, sound: true, speak: true, speakPausedUntil: 0, goalBonusDay: '', cheersSent: {},
+  crowns: {}, sound: true, speak: true, speakPausedUntil: 0, goalBonusDay: '', cheersSent: {}, days: [], daysV: 1, buddies: [],
   lessonsDone: 0, perfect: 0, updatedAt: 0, welcomed: false,
   q: null, questsDone: 0, chestDay: '', ach: {}, practiceDone: 0,
   serial: { done: {}, lastNewDay: '' }, amb: false, ambV2: true,
@@ -245,7 +245,17 @@ let S = null, userId = 'local', sb = null, offline = false;
 const storeKey = () => 'psc_state_' + userId;
 
 // Engångsändringar av sparat tillstånd
-function migrate() { if (!S.ambV2) { S.amb = false; S.ambV2 = true; } }
+function migrate() {
+  if (!S.ambV2) { S.amb = false; S.ambV2 = true; }
+  // Aktiva dagar (för kompissviten) fylls i bakåt utifrån den nuvarande sviten
+  if (!S.daysV) {
+    S.daysV = 1; S.days = S.days || [];
+    const n = streakOf(S);
+    if (n && S.lastActive) for (let i = 0; i < Math.min(n, 120); i++) { const d = new Date(S.lastActive + 'T12:00'); d.setDate(d.getDate() - i); S.days.push(dayKey(d)); }
+    S.days = [...new Set(S.days)].sort();
+  }
+  S.buddies = S.buddies || [];
+}
 function load() {
   try { S = { ...DEFAULT, ...JSON.parse(localStorage.getItem(storeKey()) || '{}') }; } catch { S = { ...DEFAULT }; }
   migrate(); tick();
@@ -287,6 +297,7 @@ function registerActivity() {
     else S.streak = 1;
   }
   S.lastActive = today;
+  S.days = [...new Set([...(S.days || []), today])].sort().slice(-120);
   let gotFreeze = false;
   if (S.streak % 7 === 0 && S.freezes < 2) { S.freezes++; gotFreeze = true; }
   return { extended: true, streak: S.streak, before, usedFreeze: used, gotFreeze };
@@ -568,6 +579,7 @@ function renderHome() {
   const cur = currentNode();
   let html = `<section class="banner">${ART.skyline()}<div class="banner-t"><h1>Port-Saint-Clément</h1><p>Franska för familj och vänner</p></div></section>`;
   html += nextCard(cur);
+  if (sb && userId !== 'local') html += `<div class="buddy card loading-c" id="buddyBox"><div class="bd-head"><b>👯 Kompissvit</b></div></div>`;
   const pct = Math.min(100, Math.round(S.dayXp / S.dailyGoal * 100));
   html += `<div class="goal card"><div><b>Dagens mål</b><span class="muted"> ${S.dayXp}/${S.dailyGoal} XP</span></div><div class="pbar"><i style="width:${pct}%"></i></div>${pct >= 100 ? '<span class="goal-ok">✓</span>' : ''}</div>`;
   html += questCard();
@@ -634,12 +646,72 @@ function renderHome() {
   const ng = $('#nextGo'); if (ng) ng.onclick = () => ng.dataset.practice ? startPractice() : nodeSheet(cur[0], cur[1]);
   const ns = $('#nextShow'); if (ns) ns.onclick = () => { const el = $('.node.cur'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
   watchAmbience();
+  fillBuddyCard();
   const curEl = $('.node.cur'); if (curEl && !renderHome.scrolled) { renderHome.scrolled = true; setTimeout(() => curEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 150); }
 
   if (!S.welcomed) welcome();
   else checkCheers();
   installHint();
   pushCard();
+}
+
+// ================= Kompissvit =================
+// Två personer som har valt varandra. Sviten växer de dagar båda gör minst en lektion.
+function buddyStreak(a, b) {
+  const A = new Set(a || []), B = new Set(b || []), today = dayKey();
+  const both = d => A.has(d) && B.has(d);
+  const d = new Date(); if (!both(today)) d.setDate(d.getDate() - 1);
+  let n = 0; while (both(dayKey(d)) && n < 400) { n++; d.setDate(d.getDate() - 1); }
+  return { n, me: A.has(today), them: B.has(today) };
+}
+let playersCache = null;
+async function playersWithState(force) {
+  if (!sb || userId === 'local') return [];
+  if (!force && playersCache && Date.now() - playersCache.t < 60000) return playersCache.list;
+  const { data, error } = await sb.from('profiles').select('id,name,avatar,state');
+  if (error || !data) return playersCache?.list || [];
+  playersCache = { t: Date.now(), list: data.filter(p => p.id !== userId && p.name) };
+  return playersCache.list;
+}
+async function fillBuddyCard() {
+  const box = $('#buddyBox'); if (!box) return;
+  const others = await playersWithState();
+  if (!$('#buddyBox') || !others.length) { box.remove(); return; }
+  const mine = new Set(S.buddies || []);
+  const rows = [];
+  others.forEach(p => {
+    const theirs = (p.state && p.state.buddies) || [];
+    if (mine.has(p.id) && theirs.includes(userId)) {
+      const bs = buddyStreak(S.days, p.state.days);
+      const status = bs.me && bs.them ? '✓ Båda klara i dag' : bs.them ? `${esc(p.name)} har gjort sin – din tur!` : bs.me ? `Väntar på ${esc(p.name)}` : 'Ingen av er har övat i dag';
+      rows.push(`<div class="bd-row ${bs.me && bs.them ? 'ok' : bs.them ? 'turn' : ''}"><span class="av">${esc(S.avatar)}</span><span class="av b2">${esc(p.avatar)}</span>
+        <div class="bd-t"><b>Du & ${esc(p.name)}</b><span>${status}</span></div><span class="bd-n">🔥 ${bs.n}</span></div>`);
+    } else if (mine.has(p.id)) {
+      rows.push(`<div class="bd-row wait"><span class="av b2">${esc(p.avatar)}</span><div class="bd-t"><b>${esc(p.name)}</b><span>Väntar på att ${esc(p.name)} lägger till dig</span></div><button class="bd-x" data-rm="${p.id}" aria-label="Ta bort">✕</button></div>`);
+    } else if (theirs.includes(userId)) {
+      rows.push(`<div class="bd-row ask"><span class="av b2">${esc(p.avatar)}</span><div class="bd-t"><b>${esc(p.name)}</b><span>vill ha kompissvit med dig</span></div><button class="btn small primary" data-add="${p.id}">Gå med</button></div>`);
+    }
+  });
+  box.innerHTML = `<div class="bd-head"><b>👯 Kompissvit</b>${(S.buddies || []).length < 3 ? '<button class="bd-plus" id="bdAdd">+ Lägg till</button>' : ''}</div>
+    ${rows.length ? rows.join('') : '<p class="muted">Välj någon i familjen. Sviten växer de dagar ni båda gör en lektion.</p>'}`;
+  box.classList.remove('loading-c');
+  $$('[data-add]', box).forEach(b => b.onclick = () => addBuddy(b.dataset.add));
+  $$('[data-rm]', box).forEach(b => b.onclick = () => { S.buddies = S.buddies.filter(x => x !== b.dataset.rm); save(); fillBuddyCard(); });
+  const add = $('#bdAdd', box); if (add) add.onclick = () => buddySheet(others);
+}
+function addBuddy(id) {
+  S.buddies = [...new Set([...(S.buddies || []), id])].slice(0, 3); save(); buzz(30); fillBuddyCard();
+}
+function buddySheet(others) {
+  const cand = others.filter(p => !(S.buddies || []).includes(p.id));
+  sheet(`<h2>Kompissvit</h2><p class="muted">Välj vem du vill öva ihop med. Sviten startar när ni båda har valt varandra.</p>
+    <div class="cheer-opts">${cand.length ? cand.map(p => `<button class="opt" data-id="${p.id}"><span>${esc(p.avatar)}</span>${esc(p.name)}</button>`).join('') : '<p class="muted">Det finns ingen fler att välja.</p>'}</div>
+    <button class="btn ghost" data-close>Avbryt</button>`,
+    (w, close) => $$('[data-id]', w).forEach(b => b.onclick = () => { close(); addBuddy(b.dataset.id); toast('Förfrågan skickad 👯'); }));
+}
+function buddyNotify() {
+  if (!sb || userId === 'local' || !(S.buddies || []).length) return;
+  sb.functions.invoke('push', { body: { type: 'buddy' } }).catch(() => { });
 }
 
 // Nästa steg: alltid en tydlig knapp överst på startsidan
@@ -1278,6 +1350,7 @@ function finish(completed) {
   if (xp > 0) {
     addXp(xp); S.ecus += ecus;
     streakInfo = registerActivity();
+    if (streakInfo.extended) setTimeout(buddyNotify, 1500);
     if (S.dayXp >= S.dailyGoal && S.goalBonusDay !== S.dayKey) { S.goalBonusDay = S.dayKey; S.ecus += 10; extra += '<p class="unlock">🎯 Dagens mål klart! +10 🪙</p>'; }
     if (L.kind === 'practice') S.practiceDone = (S.practiceDone || 0) + 1;
     extra += progressQuests({ kind: L.kind === 'role' ? 'story' : L.kind, perfect: L.mistakes === 0, combo: L.maxCombo });

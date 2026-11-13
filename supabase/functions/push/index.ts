@@ -1,5 +1,6 @@
 // Allez ! – pushnotiser (Supabase Edge Function "push")
 // type: 'cheer' → skickar pepp direkt till mottagaren
+// type: 'buddy' → den som just gjort dagens första lektion: kompisar som inte övat i dag får en knuff
 // type: 'cron'  → körs varje timme; den som inte övat i dag påminns vid sin valda tid (förval kl. 19)
 import webpush from 'npm:web-push@3.6.7';
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -74,6 +75,33 @@ Deno.serve(async (req) => {
     if (!ch?.length) return json({ error: 'ingen pepp hittad' }, 404);
     const { data: from } = await sb.from('profiles').select('name').eq('id', user.id).single();
     const sent = await sendTo(body.to, { title: `${ch[0].emoji} Pepp från ${from?.name || 'en vän'}`, body: ch[0].message, url: './' });
+    return json({ sent });
+  }
+
+  if (body.type === 'buddy') {
+    const jwt = (req.headers.get('Authorization') || '').replace('Bearer ', '');
+    const { data: { user } } = await sb.auth.getUser(jwt);
+    if (!user) return json({ error: 'inte inloggad' }, 401);
+    const today = sthlm({ year: 'numeric', month: '2-digit', day: '2-digit' });
+    const { data: me } = await sb.from('profiles').select('id,name,state').eq('id', user.id).single();
+    const mine: string[] = (me?.state?.buddies || []).slice(0, 3);
+    if (!mine.length || me?.state?.lastActive !== today) return json({ sent: 0 });
+    const { data: friends } = await sb.from('profiles').select('id,name,state').in('id', mine);
+    let sent = 0;
+    for (const f of friends || []) {
+      const st = f.state || {};
+      if (!(st.buddies || []).includes(user.id) || st.lastActive === today) continue;
+      // Gemensam svit fram till i går
+      const A = new Set(me.state.days || []), B = new Set(st.days || []);
+      const d = new Date(today + 'T12:00'); d.setDate(d.getDate() - 1);
+      let n = 0;
+      while (n < 400) { const k = d.toISOString().slice(0, 10); if (!(A.has(k) && B.has(k))) break; n++; d.setDate(d.getDate() - 1); }
+      sent += await sendTo(f.id, {
+        title: `👯 ${me.name} har gjort sin lektion!`,
+        body: n ? `Nu är det din tur – er kompissvit på ${n} ${n === 1 ? 'dag' : 'dagar'} hänger på dig.` : 'Nu är det din tur – gör en lektion så startar er kompissvit.',
+        url: './',
+      });
+    }
     return json({ sent });
   }
 
