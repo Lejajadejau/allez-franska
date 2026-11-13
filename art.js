@@ -334,6 +334,29 @@ export function character(id, mood = 'happy') {
       <path d="M22 40 q4 -24 28 -24 q24 0 28 24 l8 6 q-40 -6 -72 0z" fill="#f2c94c" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
       <path d="M84 118 l6 -40" stroke="#8a5a44" stroke-width="3"/><path d="M90 78 q8 10 2 24" fill="none" stroke="${INK}" stroke-width="1" stroke-dasharray="2 2"/>
       <path d="M86 104 q6 -4 10 0 q-4 4 -10 0z M96 104 l3 -3 v6z" fill="#7fa6c4" stroke="${INK}" stroke-width="1"/>`;
+  } else if (id === 'dubois') {
+    body = `
+      <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#6f9a5b" stroke="${INK}" stroke-width="2"/>
+      <path d="M40 76 l10 14 l10 -14" fill="#fbf7ee" stroke="${INK}" stroke-width="1.6"/>
+      <circle cx="44" cy="100" r="2" fill="#f2c46d"/><circle cx="44" cy="114" r="2" fill="#f2c46d"/>
+      <path d="M28 52 q-4 -32 22 -32 q26 0 22 32 q-4 -18 -22 -20 q-18 2 -22 20z" fill="#c8553d" stroke="${INK}" stroke-width="2"/>
+      ${face}
+      <circle cx="42" cy="46" r="6" fill="none" stroke="${INK}" stroke-width="1.6"/><circle cx="58" cy="46" r="6" fill="none" stroke="${INK}" stroke-width="1.6"/><line x1="48" y1="46" x2="52" y2="46" stroke="${INK}" stroke-width="1.6"/>
+      <path d="M28 52 q2 14 -2 18 M72 52 q-2 14 2 18" fill="none" stroke="#c8553d" stroke-width="5" stroke-linecap="round"/>
+      <rect x="72" y="92" width="22" height="28" rx="2" fill="#3f5a74" stroke="${INK}" stroke-width="1.6" transform="rotate(-8 83 106)"/>
+      <line x1="76" y1="98" x2="90" y2="96" stroke="#f2c46d" stroke-width="2"/>`;
+  } else if (id === 'olivier') {
+    body = `
+      <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#fbf7ee" stroke="${INK}" stroke-width="2"/>
+      <g stroke="#3f5a74" stroke-width="3">${[84, 94, 104, 114, 124].map(y => `<line x1="${26 + (130 - y) / 6}" y1="${y}" x2="${74 - (130 - y) / 6}" y2="${y}"/>`).join('')}</g>
+      <path d="M34 96 h32 v36 h-32z" fill="#7d6b9a" stroke="${INK}" stroke-width="1.6"/>
+      <path d="M43 76 l7 5 l7 -5 l-7 5z" fill="#c8553d" stroke="${INK}" stroke-width="1.4"/>
+      ${face}
+      <path d="M38 58 q6 -6 12 -2 q6 -4 12 2 q-6 2 -12 0 q-6 2 -12 0z" fill="#3d2c29"/>
+      <ellipse cx="50" cy="30" rx="24" ry="8" fill="#2f2a3a" stroke="${INK}" stroke-width="2" transform="rotate(-8 50 30)"/>
+      <circle cx="54" cy="21" r="2.5" fill="#2f2a3a"/>
+      <path d="M78 104 h14 v10 q0 6 -7 6 q-7 0 -7 -6z" fill="#fbf7ee" stroke="${INK}" stroke-width="1.4"/><path d="M92 107 q5 0 4 4 q-1 3 -4 2" fill="none" stroke="${INK}" stroke-width="1.4"/>
+      <path d="M82 100 q2 -4 0 -7 M87 100 q2 -4 0 -7" fill="none" stroke="#b9aea3" stroke-width="1.4"/>`;
   } else if (id === 'you') {
     body = `
       <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#f2c46d" stroke="${INK}" stroke-width="2"/>

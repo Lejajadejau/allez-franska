@@ -297,3 +297,7 @@ textarea:focus, input:focus { outline: none; border-color: #8db3d4; }
 .wl-r b { font-family: 'Fraunces', serif; font-weight: 600; }
 .wl-r .muted { font-size: .9rem; }
 .wl-r i { font-style: normal; font-size: .9rem; opacity: .6; }
+
+.fin { text-align: center; padding: 20px; margin-top: 14px; }
+.fin h2 { margin: 6px 0; }
+.weak { font-family: 'Nunito', sans-serif; font-size: .65rem; font-weight: 900; color: var(--bad); background: var(--bad-bg); padding: 1px 6px; border-radius: 99px; vertical-align: middle; }

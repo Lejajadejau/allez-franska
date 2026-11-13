@@ -32,7 +32,7 @@ function lev(a, b) {
   for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
   return d[m][n];
 }
-const PROPER = new Set(['Poireau', 'Brioche', 'Gaspard', 'Marie', 'Rémi', 'Lefèvre']);
+const PROPER = new Set(['Poireau', 'Brioche', 'Gaspard', 'Marie', 'Rémi', 'Lefèvre', 'Paul', 'Paris', 'Lucas', 'France', 'Port-Saint-Clément', 'Olivier', 'Dubois']);
 function tokens(s) {
   return s.replace(/[.,!?;:«»"]/g, ' ').split(/\s+/).filter(Boolean)
     .map(w => PROPER.has(w) ? w : w.toLowerCase());
@@ -154,6 +154,48 @@ const doneLessons = () => COURSE.flatMap((un, u) => un.lessons.map((le, l) => ({
 const wordsLearned = () => new Set(doneLessons().flatMap(x => x.le.words.map(w => w.fr))).size;
 const totalCrowns = () => Object.values(S.crowns).reduce((a, b) => a + b, 0);
 
+// ================= Smart repetition =================
+// Varje ord och mening får en "låda" 0–5. Rätt svar flyttar upp och skjuter fram nästa repetition,
+// fel svar flyttar tillbaka till låda 0 så att den kommer tillbaka direkt.
+const SRS_DAYS = [0, 1, 3, 7, 14, 30];
+function bumpItem(k, ok) {
+  S.srs = S.srs || {};
+  const it = S.srs[k] || { b: 0, w: 0 };
+  if (ok) it.b = Math.min(5, it.b + 1); else { it.b = 0; it.w = (it.w || 0) + 1; }
+  const d = new Date(); d.setDate(d.getDate() + SRS_DAYS[it.b]); it.due = dayKey(d);
+  S.srs[k] = it;
+}
+function trackAnswer(ex, ok) {
+  if (ex.type === 'match') { ex.words.forEach(w => bumpItem('w:' + w.fr, true)); return; }
+  if (ex.s) bumpItem('s:' + ex.s.fr, ok);
+  else if (ex.w) bumpItem('w:' + ex.w.fr, ok);
+}
+const isWeak = it => it && it.w > 0 && it.b < 3;
+function practicePool() {
+  const out = [];
+  doneLessons().forEach(({ u, le }) => {
+    le.words.forEach(w => out.push({ k: 'w:' + w.fr, u, w }));
+    le.sentences.forEach(s => out.push({ k: 's:' + s.fr, u, s }));
+  });
+  return out;
+}
+function weakCount() {
+  const today = dayKey(); const srs = S.srs || {};
+  return new Set(practicePool().filter(p => isWeak(srs[p.k]) && (srs[p.k].due || today) <= today).map(p => p.k)).size;
+}
+function practiceExercises(n) {
+  const today = dayKey(), srs = S.srs || {};
+  const prio = p => { const it = srs[p.k]; if (!it) return 3 + Math.random(); const due = (it.due || today) <= today; return (due ? 0 : 6) + it.b - (isWeak(it) ? 1 : 0) + Math.random() * 0.9; };
+  const seen = new Set();
+  const picked = practicePool().map(p => ({ ...p, pr: prio(p) })).sort((a, b) => a.pr - b.pr).filter(p => !seen.has(p.k) && seen.add(p.k)).slice(0, n);
+  const units = [...new Set(doneLessons().map(x => x.u))], wpool = wordPool(units);
+  return shuffle(picked.map((p, i) => {
+    if (p.w) return mkMC(p.w, wpool, i % 2 === 1);
+    const spool = sentencePool([p.u]), k = i % 4;
+    return k === 0 ? mkTiles(p.s, 'fr', spool, p.u) : k === 1 ? mkListenType(p.s, p.u) : k === 2 ? mkType(p.s, 'sv', p.u) : mkType(p.s, 'fr', p.u);
+  }));
+}
+
 // ================= Supabase =================
 async function initRemote() {
   if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) return false;
@@ -266,8 +308,11 @@ function renderHome() {
   let html = `<section class="banner">${ART.skyline()}<div class="banner-t"><h1>Port-Saint-Clément</h1><p>Franska för familj och vänner</p></div></section>`;
   const pct = Math.min(100, Math.round(S.dayXp / S.dailyGoal * 100));
   html += `<div class="goal card"><div><b>Dagens mål</b><span class="muted"> ${S.dayXp}/${S.dailyGoal} XP</span></div><div class="pbar"><i style="width:${pct}%"></i></div>${pct >= 100 ? '<span class="goal-ok">✓</span>' : ''}</div>`;
-  if (doneLessons().length && S.hearts < HEART_MAX) html += `<button class="practice-chip" id="practice">🏋️ Öva och få tillbaka ❤️</button>`;
-  else if (doneLessons().length) html += `<button class="practice-chip" id="practice">🏋️ Snabbövning (+5 XP)</button>`;
+  if (doneLessons().length) {
+    const weak = weakCount();
+    const label = S.hearts < HEART_MAX ? '🏋️ Öva och få tillbaka ❤️' : weak ? `🏋️ Repetera ${weak} ${weak === 1 ? 'svårt ord eller mening' : 'svåra ord och meningar'}` : '🏋️ Snabbövning (+5 XP)';
+    html += `<button class="practice-chip" id="practice">${label}</button>`;
+  }
 
   COURSE.forEach((un, u) => {
     const unlocked = unitUnlocked(u);
@@ -289,6 +334,7 @@ function renderHome() {
     });
     html += `</div></section>${ART.tramDivider()}`;
   });
+  if (!FUTURE.length) html += `<section class="card fin"><div class="big-emoji">🎉</div><h2>Fin du voyage… pour l'instant !</h2><p class="muted">Du har sett hela Port-Saint-Clément. Fortsätt repetera för att få kronor på alla lektioner – fler kvarter kan byggas.</p></section>`;
   FUTURE.forEach((f, i) => {
     html += `<section class="unit future"><div class="unit-head"><div><small>Kvarter ${COURSE.length + i + 1} · ${f.level}</small><h2>${f.fr}</h2><p>${f.sv} – ${f.desc}</p></div></div>
       <div class="scene">${ART.scene(f.id)}<div class="lock-over"><span class="soon">Byggs snart</span></div></div></section>`;
@@ -541,7 +587,7 @@ function wordList() {
     return { un, ws };
   }).filter(g => g.ws.length);
   sheet(`<h2>Mina ord</h2>${groups.length ? groups.map(g => `<h3 class="sub">${esc(g.un.fr)}</h3>
-    <div class="wl">${g.ws.map(w => `<button class="wl-r" data-say="${esc(w.fr)}"><span>${w.e}</span><b>${esc(w.fr)}</b><span class="muted">${esc(first(w.sv))}</span><i>🔊</i></button>`).join('')}</div>`).join('')
+    <div class="wl">${g.ws.map(w => `<button class="wl-r" data-say="${esc(w.fr)}"><span>${w.e}</span><b>${esc(w.fr)}${isWeak((S.srs || {})['w:' + w.fr]) ? ' <small class="weak">svår</small>' : ''}</b><span class="muted">${esc(first(w.sv))}</span><i>🔊</i></button>`).join('')}</div>`).join('')
     : '<p class="muted">Klara din första lektion så samlas orden här.</p>'}
     <button class="btn primary" data-close>Stäng</button>`, w => $$('[data-say]', w).forEach(b => b.onclick = () => say(b.dataset.say)));
 }
@@ -666,7 +712,7 @@ function startLesson(u, l) {
 function startPractice() {
   const units = [...new Set(doneLessons().map(x => x.u))];
   if (!units.length) { toast('Gör din första lektion först!'); return; }
-  startSession({ kind: 'practice', queue: mixedExercises(units, 8) });
+  startSession({ kind: 'practice', queue: practiceExercises(8) });
 }
 function startTest(u) {
   startSession({ kind: 'test', u, queue: mixedExercises([...Array(u).keys()], 12), lives: 3 });
@@ -714,6 +760,7 @@ function showFeedback(r) {
   L.checked = true;
   const ex = L.queue[L.i];
   chime(r.ok);
+  trackAnswer(ex, r.ok);
   if (r.ok) { L.done++; L.combo++; L.maxCombo = Math.max(L.maxCombo, L.combo); }
   else {
     L.mistakes++; L.combo = 0;
