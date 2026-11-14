@@ -1069,7 +1069,7 @@ function renderProfile() {
         ${S.push ? `<label><span>Påminn mig kl.</span><select id="setHour" class="remind-sel">${Array.from({ length: 16 }, (_, k) => k + 7).map(h => `<option value="${h}" ${(S.remindHour ?? 19) === h ? 'selected' : ''}>${pad(h)}:00</option>`).join('')}</select></label>` : ''}` : ''}
       <label><span>Ljudeffekter</span><input type="checkbox" id="setSound" ${S.sound ? 'checked' : ''}></label>
       ${'vibrate' in navigator ? `<label><span>Vibrationer</span><input type="checkbox" id="setHaptic" ${S.haptic !== false ? 'checked' : ''}></label>` : ''}
-      ${AUDIO_ROOT ? `<label><span>Bakgrundsljud i kvarteren</span><input type="checkbox" id="setAmb" ${S.amb !== false ? 'checked' : ''}></label>` : ''}
+      ${AUDIO_ROOT ? `<label><span>Spårvagnsplinget på kartan</span><input type="checkbox" id="setAmb" ${S.tram !== false ? 'checked' : ''}></label>` : ''}
       <label><span>Muntliga uppgifter</span><input type="checkbox" id="setSpeak" ${S.speak !== false ? 'checked' : ''}></label>
       ${SR ? `<label><span>Svara muntligt</span><select id="setMic" class="remind-sel"><option value="self" ${!micMode() ? 'selected' : ''}>Säg högt själv</option><option value="mic" ${micMode() ? 'selected' : ''}>Med mikrofon</option></select></label>` : ''}
       ${AUDIO_ROOT && 'caches' in window ? `<button class="row-b" id="offAudio">⬇️ Ljud offline <small class="muted" id="offInfo"></small></button>` : ''}
@@ -1087,7 +1087,7 @@ function renderProfile() {
   $('#buyH').onclick = () => { S.ecus -= 80; S.hearts = HEART_MAX; save(); toast('❤️ Fullt med hjärtan'); renderProfile(); };
   $('#setSound').onchange = e => { S.sound = e.target.checked; save(); };
   const shp = $("#setHaptic"); if (shp) shp.onchange = e => { S.haptic = e.target.checked; save(); if (S.haptic) buzz(30); };
-  const sa = $('#setAmb'); if (sa) sa.onchange = e => { S.amb = e.target.checked; save(); if (!S.amb) setAmbience(null); };
+  const sa = $('#setAmb'); if (sa) sa.onchange = e => { S.tram = e.target.checked; save(); if (S.tram) tramBell(); };
   const sp = $('#setPush'); if (sp) sp.onchange = async e => { if (e.target.checked) { if (!(await enablePush())) e.target.checked = false; } else await disablePush(); renderProfile(); };
   const sh = $('#setHour'); if (sh) sh.onchange = e => { S.remindHour = +e.target.value; save(); toast(`🔔 Påminnelse kl. ${pad(S.remindHour)}:00 de dagar du inte har övat`); };
   $('#setSpeak').onchange = e => { S.speak = e.target.checked; S.speakPausedUntil = 0; save(); };
@@ -1112,7 +1112,6 @@ function allAudioUrls(units) {
     un.lessons.forEach(l => { l.words.forEach(w => addTxt(w.fr)); l.sentences.forEach(x => addTxt(x.fr)); l.story?.lines.forEach(x => addTxt(x.fr)); });
     (STORIES[un.id] || []).forEach(st => st.lines.forEach((_, i) => urls.add(lineUrl(st, i))));
     EPS.filter(ep => ep.u === u).forEach(st => st.lines.forEach((_, i) => urls.add(lineUrl(st, i))));
-    urls.add(ambUrl(un.id));
     un.lessons.forEach(l => [...l.words, ...l.sentences].forEach(x => { const u2 = svUrl(String(x.sv).split('|')[0]); if (u2) urls.add(u2); }));
   });
   return [...urls];
@@ -2290,22 +2289,38 @@ document.addEventListener('visibilitychange', () => {
   else if (ambWant && !LM) { const w = ambWant; ambWant = null; setAmbience(w); }
   if (!document.hidden && LM?.playing) lockWake(true);
 });
-let ambIO = null;
+// Kartan: inga bakgrundsljud längre – i stället ett snällt pling när en spårvagn åker förbi i bild
+let tramIO = null, tramLast = 0;
+const tramSeen = new Map();
+function tramBell() {
+  const ctx = audioCtx(); if (!ctx || ctx.state !== 'running') return;
+  const t0 = ctx.currentTime + 0.02, out = ctx.createGain(); out.gain.value = 0.11; out.connect(ctx.destination);
+  [0, 0.26].forEach((d, k) => [[1, 0.55], [2.76, 0.18], [5.4, 0.06]].forEach(([m, a]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain(), t = t0 + d;
+    o.type = 'sine'; o.frequency.value = (k ? 1046 : 1318) * m;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(a, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0008, t + 1.3);
+    o.connect(g).connect(out); o.start(t); o.stop(t + 1.35);
+  }));
+}
+function tramPassing(el, delay) {
+  setTimeout(() => {
+    if (S?.tram === false || view !== 'home' || L || LM || document.hidden || speakingNow()) return;
+    if (!el.isConnected || (tramSeen.get(el) || 0) < 0.4) return;
+    if (Date.now() - tramLast < 6000) return; // flera spårvagnar i bild ska inte pingla i kör
+    tramLast = Date.now(); tramBell();
+  }, delay);
+}
 function watchAmbience() {
-  ambIO?.disconnect();
+  S.amb = false; setAmbience(null); // bakgrundsljuden är borttagna
+  tramIO?.disconnect(); tramSeen.clear();
   if (!('IntersectionObserver' in window)) return;
-  const vis = new Map(); let tmr;
-  ambIO = new IntersectionObserver(es => {
-    es.forEach(e => vis.set(e.target, e.intersectionRatio));
-    clearTimeout(tmr);
-    tmr = setTimeout(() => {
-      if (view !== 'home' || L || LM) return;
-      let best = null, br = 0.5;
-      vis.forEach((r, el) => { if (r > br && el.isConnected) { br = r; best = el; } });
-      setAmbience(best ? best.dataset.scene : null);
-    }, 450);
-  }, { threshold: [0, 0.25, 0.5, 0.75, 1] });
-  $$('.unit:not(.locked):not(.future) .scene[data-scene]').forEach(el => ambIO.observe(el));
+  tramIO = new IntersectionObserver(es => es.forEach(e => tramSeen.set(e.target, e.intersectionRatio)), { threshold: [0, 0.4, 1] });
+  $$('.unit:not(.locked):not(.future) .tram-x, .tram-div').forEach(el => {
+    tramIO.observe(el);
+    const anim = el.querySelector('.tx-tram, .tram-move');
+    // spårvagnen åker in från vänster; plinget kommer när den har kommit en bit in i bild
+    anim?.addEventListener('animationiteration', () => tramPassing(el, el.classList.contains('tram-div') ? 2600 : 1400));
+  });
 }
 
 // ================= Rollspel =================
