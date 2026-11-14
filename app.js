@@ -241,6 +241,11 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const micMode = () => !!SR && (S.speakMode || (isIOS ? 'self' : 'mic')) === 'mic' && !S.speakBroken;
 const canSpeak = () => S.speak !== false && Date.now() > (S.speakPausedUntil || 0);
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+// Taligenkänning: stäng mikrofonen ordentligt och ställ tillbaka ljudet (iPhone fastnar annars i inspelningsläge)
+let activeRec = null;
+const restoreAudio = () => { try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {} };
+function stopRec() { const r = activeRec; activeRec = null; if (r) { try { r.abort(); } catch {} restoreAudio(); } }
+function newRec() { stopRec(); const r = new SR(); activeRec = r; r.addEventListener('end', () => { if (activeRec === r) activeRec = null; restoreAudio(); }); return r; }
 
 // ================= Tillstånd =================
 const HEART_MAX = 5, HEART_MS = 30 * 60 * 1000;
@@ -1364,6 +1369,7 @@ function tilesFirst(ex) {
   return ex;
 }
 function renderEx() {
+  stopRec();
   L.queue[L.i] = tilesFirst(L.queue[L.i]);
   const ex = L.queue[L.i];
   L.checked = false;
@@ -1691,7 +1697,7 @@ function storySpeak(ln) {
   const target = norm(ln.fr, false).split(' ');
   $('#mic', box).onclick = () => {
     try {
-      const rec = new SR(); rec.lang = 'fr-FR'; rec.maxAlternatives = 3;
+      const rec = newRec(); rec.lang = 'fr-FR'; rec.maxAlternatives = 3;
       $('#mic', box).classList.add('rec');
       rec.onresult = e => {
         const alts = [...e.results[0]].map(a => a.transcript);
@@ -1947,7 +1953,7 @@ const EX = {
     $('#mic', root).onclick = () => {
       if (L.checked) return;
       try {
-        rec = new SR(); rec.lang = 'fr-FR'; rec.interimResults = false; rec.maxAlternatives = 3;
+        rec = newRec(); rec.lang = 'fr-FR'; rec.interimResults = false; rec.maxAlternatives = 3;
         $('#mic', root).classList.add('rec'); $('#mic span', root).textContent = 'Lyssnar…';
         rec.onresult = e => {
           const alts = [...e.results[0]].map(a => a.transcript);
@@ -2205,7 +2211,7 @@ function rolePrompt(idx) {
   if (mic) mic.onclick = () => {
     if (L.q !== 'open') return;
     try {
-      const rec = new SR(); rec.lang = 'fr-FR'; rec.maxAlternatives = 3; mic.classList.add('rec');
+      const rec = newRec(); rec.lang = 'fr-FR'; rec.maxAlternatives = 3; mic.classList.add('rec');
       const target = norm(ln.fr, false).split(' ');
       rec.onresult = e => {
         const alts = [...e.results[0]].map(a => a.transcript);
