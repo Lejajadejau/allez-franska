@@ -414,11 +414,20 @@ function achGrid() {
 const lessonAt = (u, l) => COURSE[u].lessons[l];
 const crownsOf = id => S.crowns[id] || 0;
 const unitDone = u => COURSE[u].lessons.every(l => crownsOf(l.id) >= 1);
-const unitUnlocked = u => u === 0 || unitDone(u - 1);
-const lessonUnlocked = (u, l) => unitUnlocked(u) && (l === 0 || crownsOf(lessonAt(u, l - 1).id) >= 1);
+// Nivåtest: kvarter på eller under den nivå man har visat är öppna och hoppas över i "Nästa steg"
+const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1'];
+const lvRank = lv => LEVELS.indexOf(lv);
+const knownUnit = u => !!S.placeLevel && lvRank(COURSE[u].level) <= lvRank(S.placeLevel);
+function placeStart() { if (!S.placeLevel) return 0; const i = COURSE.findIndex((_, u) => !knownUnit(u)); return i < 0 ? COURSE.length - 1 : i; }
+const unitUnlocked = u => u === 0 || unitDone(u - 1) || knownUnit(u) || (!!S.placeLevel && u === placeStart());
+const lessonUnlocked = (u, l) => unitUnlocked(u) && (l === 0 || crownsOf(lessonAt(u, l - 1).id) >= 1 || knownUnit(u));
 function currentNode() {
-  for (let u = 0; u < COURSE.length; u++) for (let l = 0; l < COURSE[u].lessons.length; l++)
-    if (lessonUnlocked(u, l) && crownsOf(lessonAt(u, l).id) === 0) return [u, l];
+  for (const skipKnown of [true, false])
+    for (let u = 0; u < COURSE.length; u++) {
+      if (skipKnown && knownUnit(u)) continue;
+      for (let l = 0; l < COURSE[u].lessons.length; l++)
+        if (lessonUnlocked(u, l) && crownsOf(lessonAt(u, l).id) === 0) return [u, l];
+    }
   return null;
 }
 const doneLessons = () => COURSE.flatMap((un, u) => un.lessons.map((le, l) => ({ u, l, le }))).filter(x => crownsOf(x.le.id) >= 1);
@@ -840,6 +849,7 @@ function crumbText() {
   if (!L) return '';
   if (L.kind === 'lesson') { const un = COURSE[L.u]; return `Kvarter ${L.u + 1} · ${un.fr} › Lektion ${L.l + 1} av ${un.lessons.length}: ${lessonAt(L.u, L.l).title}`; }
   if (L.kind === 'test') return `Hopptest till kvarter ${L.u + 1} · ${COURSE[L.u].fr}`;
+  if (L.kind === 'place') return `Nivåtest · nivå ${LEVELS[L.lvIdx] || ''}`;
   if (L.dict) return 'Diktamen';
   if (L.verb) return 'Verbträning';
   if (L.review) return 'Dagens repetition';
@@ -853,7 +863,9 @@ function welcome() {
     <h2>Välkommen till Port-Saint-Clément!</h2>
     <p>Det här är en liten stad vid havet. Varje kvarter är en del av kursen – börja hos Madame Brioche på bageriet.</p>
     <p class="muted">Tryck på 🔊 för att höra franskan. Gör en lektion om dagen för att bygga din svit 🔥 och peppa varandra i Ligan 🏆.</p>
-    <button class="btn primary" data-close>Allons-y !</button>`, w => {
+    <button class="btn primary" data-close>Allons-y ! Börja från början</button>
+    <button class="btn" id="placeW">🎯 Jag kan lite franska – gör ett nivåtest</button>`, (w, close) => {
+    $('#placeW', w).onclick = () => { close(); startPlacement(); };
     $('[data-say]', w).onclick = e => say(e.currentTarget.dataset.say);
     setTimeout(() => say(un.welcome), 400);
   });
@@ -1061,6 +1073,7 @@ function renderProfile() {
       <label><span>Muntliga uppgifter</span><input type="checkbox" id="setSpeak" ${S.speak !== false ? 'checked' : ''}></label>
       ${SR ? `<label><span>Svara muntligt</span><select id="setMic" class="remind-sel"><option value="self" ${!micMode() ? 'selected' : ''}>Säg högt själv</option><option value="mic" ${micMode() ? 'selected' : ''}>Med mikrofon</option></select></label>` : ''}
       ${AUDIO_ROOT && 'caches' in window ? `<button class="row-b" id="offAudio">⬇️ Ljud offline <small class="muted" id="offInfo"></small></button>` : ''}
+      <button class="row-b" id="placeP">🎯 Nivåtest${S.placeLevel ? ` <small class="muted">din nivå: ${S.placeLevel}</small>` : ''}</button>
       ${doneLessons().length ? '<button class="row-b" id="listenP">🎧 Lyssna fritt (handsfree)</button>' : ''}
       <button class="row-b" id="words">📚 Mina ord (${wordsLearned()})</button>
       <button class="row-b" id="editP">✏️ Byt namn och figur</button>
@@ -1082,6 +1095,7 @@ function renderProfile() {
   $('#editP').onclick = () => renderOnboard(true);
   $('#words').onclick = wordList;
   const lp = $('#listenP'); if (lp) lp.onclick = () => startListen();
+  const pp = $('#placeP'); if (pp) pp.onclick = placeAsk;
   const oa = $('#offAudio'); if (oa) { offlineInfo().then(t => { const i = $('#offInfo'); if (i) i.textContent = t; }); oa.onclick = offlineSheet; }
   $('#testVoice').onclick = () => say('Bonjour ! Je voudrais un croissant, s\'il vous plaît.');
   const lo = $('#logout'); if (lo) lo.onclick = async () => { await sb.auth.signOut(); localStorage.removeItem('psc_last_user'); location.reload(); };
@@ -1378,12 +1392,40 @@ function startEar() {
   startSession({ kind: 'practice', ear: true, queue: shuffle([...pairs, ...scenes]) });
 }
 
+// ================= Nivåtest =================
+// Fyra frågor per nivå (A1 → C1). Högst ett fel på en nivå → nästa nivå, annars är testet klart.
+function placeBlock(lv) {
+  const units = COURSE.map((un, u) => un.level === lv ? u : -1).filter(u => u >= 0);
+  return units.length ? mixedExercises(units, 4).map(e => ({ ...e, lv })) : [];
+}
+function startPlacement() {
+  startSession({ kind: 'place', lvIdx: 0, blockMiss0: 0, passed: null, total: LEVELS.length * 4, queue: placeBlock(LEVELS[0]) });
+}
+function placeBlockDone() {
+  const miss = L.mistakes - L.blockMiss0;
+  if (miss <= 1) {
+    L.passed = LEVELS[L.lvIdx];
+    while (++L.lvIdx < LEVELS.length) {
+      const q = placeBlock(LEVELS[L.lvIdx]);
+      if (q.length) { L.queue.push(...q); L.blockMiss0 = L.mistakes; renderEx(); return; }
+    }
+  }
+  L.total = L.queue.length; // rätt-procenten räknas på de frågor som faktiskt ställdes
+  finish(true);
+}
+function placeAsk() {
+  sheet(`<div class="big-emoji">🎯</div><h2>Nivåtest</h2>
+    <p>Svara på några frågor, från enkla till svåra. Testet slutar när det börjar bli för svårt, och tar som mest fem minuter.</p>
+    <p class="muted">Kvarteren under din nivå låses upp. Dina tidigare lektioner påverkas inte.</p>
+    <button class="btn primary" id="placeGo">Starta testet</button><button class="btn ghost" data-close>Inte nu</button>`,
+    (w, close) => $('#placeGo', w).onclick = () => { close(); startPlacement(); });
+}
 function startTest(u) {
   startSession({ kind: 'test', u, queue: mixedExercises([...Array(u).keys()], 12), lives: 3 });
 }
 function startSession(o) {
   setAmbience(null);
-  L = { ...o, i: 0, done: 0, total: o.queue.length, mistakes: 0, combo: 0, maxCombo: 0, start: Date.now(), requeued: new Set(), checked: false };
+  L = { ...o, i: 0, done: 0, total: o.total || o.queue.length, mistakes: 0, combo: 0, maxCombo: 0, start: Date.now(), requeued: new Set(), checked: false };
   renderEx();
 }
 function quitLesson() {
@@ -1394,6 +1436,7 @@ function quitLesson() {
 function livesHtml() {
   if (L.kind === 'test') return `<div class="lh">${'💛'.repeat(Math.max(0, L.lives))}${'🤍'.repeat(3 - Math.max(0, L.lives))}</div>`;
   if (L.kind === 'practice') return `<div class="lh">🏋️</div>`;
+  if (L.kind === 'place') return `<div class="lh">🎯</div>`;
   return `<div class="lh">❤️ ${S.hearts}</div>`;
 }
 let cur = null; // aktuell övning: {ready, check()}
@@ -1406,7 +1449,7 @@ function tilesFirst(ex) {
 }
 const RESUME_KEY = 'allez-resume';
 function saveResume() {
-  if (!L || !['lesson', 'practice', 'test'].includes(L.kind)) return;
+  if (!L || !['lesson', 'practice', 'test', 'place'].includes(L.kind)) return;
   try { localStorage.setItem(RESUME_KEY, JSON.stringify({ t: Date.now(), crumb: crumbText(), L: { ...L, requeued: [...(L.requeued || [])] } })); } catch { }
 }
 function clearResume() { try { localStorage.removeItem(RESUME_KEY); } catch { } }
@@ -1433,7 +1476,7 @@ function resumeCard() {
 function renderEx() {
   stopRec();
   saveResume();
-  L.queue[L.i] = tilesFirst(L.queue[L.i]);
+  { const prev = L.queue[L.i], nx = tilesFirst(prev); if (nx !== prev && prev.lv) nx.lv = prev.lv; L.queue[L.i] = nx; }
   const ex = L.queue[L.i];
   L.checked = false;
   const pct = Math.round(L.done / L.total * 100);
@@ -1463,7 +1506,7 @@ function showFeedback(r) {
   L.checked = true;
   const ex = L.queue[L.i];
   chime(r.ok, r.ok ? L.combo + 1 : 0);
-  trackAnswer(ex, r.ok);
+  if (L.kind !== 'place') trackAnswer(ex, r.ok);
   if (ex.type === 'verb') { S.verbSeen = S.verbSeen || {}; const k = vKey(ex.vb, ex.t); S.verbSeen[k] = Math.max(0, (S.verbSeen[k] || 0) + (r.ok ? 1 : -1)); }
   if (r.ok && ex.type === 'tiles') { S.built = S.built || {}; S.built[builtKey(ex, ex.listen)] = 1; }
   if (r.ok) { L.done++; L.combo++; L.maxCombo = Math.max(L.maxCombo, L.combo); }
@@ -1471,10 +1514,11 @@ function showFeedback(r) {
     L.mistakes++; L.combo = 0;
     if (L.kind === 'lesson' && !r.self) loseHeart();
     if (L.kind === 'test') L.lives--;
+    const oneTry = L.kind === 'test' || L.kind === 'place';
     if (r.self) L.done++;
-    else if (L.kind !== 'test' && !L.requeued.has(L.i)) { L.requeued.add(L.queue.length); L.queue.push(ex); }
-    else if (L.kind !== 'test') L.done++; // räkna ändå fram efter andra försöket
-    if (L.kind === 'test') L.done++;
+    else if (!oneTry && !L.requeued.has(L.i)) { L.requeued.add(L.queue.length); L.queue.push(ex); }
+    else if (!oneTry) L.done++; // räkna ändå fram efter andra försöket
+    if (oneTry) L.done++;
   }
   const nc = $('.npc-c'); if (nc) { nc.innerHTML = ART.character(COURSE[ex.u ?? 0].character, r.ok ? 'happy' : 'think'); nc.classList.remove('hop'); void nc.offsetWidth; if (r.ok) nc.classList.add('hop'); }
   const fb = $('#fb'), foot = $('#lfoot');
@@ -1495,6 +1539,7 @@ function showFeedback(r) {
 function next() {
   speechSynthesis?.cancel();
   L.i++;
+  if (L.kind === 'place' && L.i >= L.queue.length) { placeBlockDone(); return; }
   if (L.i >= L.queue.length) { finish(true); return; }
   renderEx();
 }
@@ -1550,6 +1595,15 @@ function finish(completed) {
     xp = 10 + (L.mistakes === 0 ? 5 : 0); ecus = first ? 10 : 3;
     title = 'Bravo, quel acteur !';
     extra = L.mistakes === 0 ? '<p class="unlock">🎭 Alla repliker rätt!</p>' : `<p class="muted">${L.total - L.mistakes} av ${L.total} repliker rätt på första försöket.</p>`;
+  } else if (L.kind === 'place') {
+    const got = L.passed;
+    if (got && (!S.placeLevel || lvRank(got) > lvRank(S.placeLevel))) S.placeLevel = got;
+    xp = 10; ecus = 5;
+    if (got) {
+      const st = placeStart(), n = COURSE.filter((_, u) => knownUnit(u)).length;
+      title = `Din nivå: ${got}`; char = COURSE[st].character;
+      extra = `<p class="unlock">🗝️ ${n} kvarter är upplåsta – du fortsätter i ${esc(COURSE[st].fr)}.</p><p class="muted">Kvarteren under din nivå är öppna, så du kan gå tillbaka och repetera när du vill.</p>`;
+    } else { title = 'Vi börjar från början'; extra = '<p>Ingen fara – hos Madame Brioche på bageriet kommer du snabbt igång.</p>'; }
   } else if (L.kind === 'test') {
     if (completed && L.lives >= 0) {
       for (let u = 0; u < L.u; u++) COURSE[u].lessons.forEach(le => { if (!crownsOf(le.id)) S.crowns[le.id] = 1; });
@@ -2500,7 +2554,7 @@ function showUpdate() {
   const b = document.createElement('button'); b.className = 'upd-bar'; b.textContent = '✨ Ny version av Allez – tryck för att uppdatera';
   b.onclick = async () => {
     b.textContent = 'Uppdaterar…';
-    if (L && ['lesson', 'practice', 'test'].includes(L.kind)) { saveResume(); try { sessionStorage.setItem('allez-autoresume', '1'); } catch { } }
+    if (L && ['lesson', 'practice', 'test', 'place'].includes(L.kind)) { saveResume(); try { sessionStorage.setItem('allez-autoresume', '1'); } catch { } }
     try { const reg = await navigator.serviceWorker?.getRegistration(); await reg?.update(); } catch { }
     location.reload();
   };
@@ -2539,4 +2593,4 @@ if ('serviceWorker' in navigator) window.addEventListener('load', () => navigato
 boot();
 
 // För test
-window.__psc = { get S() { return S; }, get L() { return L; }, get wa() { return { st: actx?.state, playing: !!curSrc, n: bufCache.size }; }, say: (t, o) => say(t, false, o || {}), get amb() { return ambCur?.id || null; }, get LM() { return LM; }, COURSE, STORIES, renderEx: () => renderEx(), finish: c => finish(c), showStreak: s => showStreak(s), conjCheck: (e, o) => conj(e.vb, e.t, e.i).includes(o), conjAns: e => conj(e.vb, e.t, e.i)[0], startRadio: u => startRadio(u), startEar: () => startEar(), startLesson: (u, l) => startLesson(u, l) };
+window.__psc = { get S() { return S; }, get L() { return L; }, get wa() { return { st: actx?.state, playing: !!curSrc, n: bufCache.size }; }, say: (t, o) => say(t, false, o || {}), get amb() { return ambCur?.id || null; }, get LM() { return LM; }, COURSE, STORIES, renderEx: () => renderEx(), finish: c => finish(c), showStreak: s => showStreak(s), conjCheck: (e, o) => conj(e.vb, e.t, e.i).includes(o), conjAns: e => conj(e.vb, e.t, e.i)[0], startRadio: u => startRadio(u), startEar: () => startEar(), startLesson: (u, l) => startLesson(u, l), get cur() { return cur; }, forceAnswer: ok => { cur.check = () => ({ ok, answer: '' }); cur.ready = true; showFeedback({ ok, answer: '' }); }, next: () => next() };
