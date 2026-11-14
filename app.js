@@ -1224,7 +1224,7 @@ function verbSheet() {
     $('#vt', w).innerHTML = TENSES.map(t => `<button class="chip ${sel.has(t.id) ? 'on' : ''}" data-t="${t.id}">${esc(t.fr)}<small>${esc(t.sv)}</small></button>`).join('');
     $$('[data-t]', w).forEach(b => b.onclick = () => { const id = b.dataset.t; sel.has(id) ? sel.size > 1 && sel.delete(id) : sel.add(id); draw(w); });
   };
-  sheet(`<div class="big-emoji">🔤</div><h2>Verbträning</h2><p class="muted">Välj vilka tempus du vill öva. 28 vanliga verb, 12 frågor per runda.</p>
+  sheet(`<div class="big-emoji">🔤</div><h2>Verbträning</h2><p class="muted">Välj vilka tempus du vill öva. Varje runda tar tre verb. Ett nytt verb visas först som tabell med regel och ljud – sedan övar du. Först flerval, sedan skriver du själv.</p>
     <div class="chips verb-tenses" id="vt"></div>
     <div class="seg small-seg"><button data-l="common" class="${lvl === 'common' ? 'on' : ''}">De 10 vanligaste</button><button data-l="all" class="${lvl === 'all' ? 'on' : ''}">Alla 28 verb</button></div>
     <button class="btn primary" id="vgo">Börja</button><button class="btn ghost" data-close>Stäng</button>`,
@@ -1234,21 +1234,48 @@ function verbSheet() {
       $('#vgo', w).onclick = () => { S.verbTenses = [...sel]; S.verbLevel = l; save(false); close(); startVerbs(); };
     });
 }
+// Verbträning: lär först (tabell + regel), öva sedan. Flerval tills man svarat rätt några gånger, sedan fri skrift.
+const vKey = (vb, t) => vb.v + ':' + t;
+const verbScore = (vb, t) => (S.verbSeen || {})[vKey(vb, t)];
+function verbOpts(vb, t, i) {
+  const right = conj(vb, t, i)[0], cands = new Set();
+  [0, 1, 2, 3, 4, 5].forEach(j => cands.add(conj(vb, t, j)[0]));
+  TENSES.forEach(tt => cands.add(conj(vb, tt.id, i)[0]));
+  cands.delete(right);
+  return shuffle([right, ...pickN([...cands], 3)]);
+}
+const verbSay = (vb, t, i) => { const f = conj(vb, t, i)[0], p = pron(t, i, f); return `${p.replace(/\/(elle|qu'elle)s?/, '')}${p.endsWith("'") ? '' : ' '}${f}`; };
+const verbShown = (vb, t, i) => { const f = conj(vb, t, i)[0], p = pron(t, i, f); return `${p}${p.endsWith("'") ? '' : ' '}${shown(vb, t, i)}`; };
+function verbRule(vb, t) {
+  const v = vb.v;
+  if (t === 'pres') {
+    if (v.endsWith('er') && v !== 'aller') return `Verb på -er böjs regelbundet: -e, -es, -e, -ons, -ez, -ent.${v === 'manger' ? ' Obs: nous mangeons (e:et behåller g-ljudet).' : ''}`;
+    if (v === 'finir' || v === 'choisir') return 'Verb som finir: -is, -is, -it, -issons, -issez, -issent.';
+    if (v === 'attendre' || v === 'vendre') return 'Verb på -re: -s, -s, (ingen ändelse), -ons, -ez, -ent.';
+    return 'Oregelbundet verb – formerna behöver läras in. Säg dem högt några gånger.';
+  }
+  if (t === 'pc') return vb.e ? `Böjs med être: je suis + ${vb.pp}. Participet får -e för kvinnor och -s i plural.` : `avoir i presens + participet ${vb.pp}: j'ai ${vb.pp}, tu as ${vb.pp} …`;
+  if (t === 'imp') return v === 'être' ? 'Stammen är ét- + -ais, -ais, -ait, -ions, -iez, -aient.' : 'Ta nous-formen i presens utan -ons och lägg till -ais, -ais, -ait, -ions, -iez, -aient.';
+  if (t === 'fut') return `Futurumstam ${vb.f}- + -ai, -as, -a, -ons, -ez, -ont.`;
+  if (t === 'cond') return `Samma stam som futurum (${vb.f}-) + -ais, -ais, -ait, -ions, -iez, -aient.`;
+  if (t === 'subj') return vb.sj ? 'Används efter il faut que. Oregelbundet i subjunktiv – lär in formerna.' : 'Används efter il faut que. Ta ils-formen utan -ent och lägg till -e, -es, -e, -ions, -iez, -ent.';
+  return '';
+}
+function verbTableHtml(vb, t) {
+  return `<div class="vtab">${[0, 1, 2, 3, 4, 5].map(i => `<button class="vrow" data-say="${esc(verbSay(vb, t, i))}"><span>${esc(verbShown(vb, t, i))}</span><span class="say-i">🔊</span></button>`).join('')}</div>
+    <p class="vrule">💡 ${esc(verbRule(vb, t))}</p>`;
+}
 function startVerbs() {
   const tenses = S.verbTenses || ['pres', 'pc'], verbs = S.verbLevel === 'all' ? VERBS : VERBS.slice(0, 10);
-  const queue = Array.from({ length: 12 }, (_, k) => {
-    const vb = rnd(verbs), t = rnd(tenses), i = Math.floor(Math.random() * 6);
-    const right = conj(vb, t, i)[0];
-    const mc = k < 4 || k % 3 === 0;
-    let opts = null;
-    if (mc) {
-      const cands = new Set();
-      [0, 1, 2, 3, 4, 5].forEach(j => cands.add(conj(vb, t, j)[0]));
-      TENSES.forEach(tt => cands.add(conj(vb, tt.id, i)[0]));
-      cands.delete(right);
-      opts = shuffle([right, ...pickN([...cands], 3)]);
-    }
-    return { type: 'verb', vb, t, i, mc, opts };
+  // Tre verb/tempus-par per runda: helst ett nytt, resten repetition (lägst poäng först)
+  const pairs = shuffle(verbs.flatMap(vb => tenses.map(t => ({ vb, t }))));
+  const fresh = pairs.filter(p => verbScore(p.vb, p.t) == null), known = pairs.filter(p => verbScore(p.vb, p.t) != null).sort((a, b) => verbScore(a.vb, a.t) - verbScore(b.vb, b.t));
+  const chosen = [...fresh.slice(0, 1), ...known.slice(0, 2)];
+  for (const f of fresh.slice(1)) { if (chosen.length >= 3) break; chosen.push(f); }
+  const queue = [];
+  chosen.forEach(({ vb, t }) => {
+    if (verbScore(vb, t) == null) queue.push({ type: 'verbTable', vb, t });
+    shuffle([0, 1, 2, 3, 4, 5]).slice(0, 4).forEach(i => queue.push({ type: 'verb', vb, t, i }));
   });
   startSession({ kind: 'practice', verb: true, queue });
 }
@@ -1302,6 +1329,7 @@ function onCheck() {
   if (L.checked) { next(); return; }
   if (!cur.ready) return;
   const r = cur.check();
+  if (r.learn) { const ex = L.queue[L.i]; S.verbSeen = S.verbSeen || {}; if (S.verbSeen[vKey(ex.vb, ex.t)] == null) S.verbSeen[vKey(ex.vb, ex.t)] = 0; L.done++; next(); return; }
   showFeedback(r);
 }
 function showFeedback(r) {
@@ -1309,6 +1337,7 @@ function showFeedback(r) {
   const ex = L.queue[L.i];
   chime(r.ok, r.ok ? L.combo + 1 : 0);
   trackAnswer(ex, r.ok);
+  if (ex.type === 'verb') { S.verbSeen = S.verbSeen || {}; const k = vKey(ex.vb, ex.t); S.verbSeen[k] = Math.max(0, (S.verbSeen[k] || 0) + (r.ok ? 1 : -1)); }
   if (r.ok && ex.type === 'tiles') { S.built = S.built || {}; S.built[builtKey(ex, ex.listen)] = 1; }
   if (r.ok) { L.done++; L.combo++; L.maxCombo = Math.max(L.maxCombo, L.combo); }
   else {
@@ -1736,15 +1765,32 @@ const EX = {
       return { ...g, answer: ex.s.fr, say: ex.s.fr, meaning: first(ex.s.sv), diff: g.ok && !g.note ? '' : diffHtml(inp.value, ex.s.fr) };
     };
   },
+  verbTable(ex, root) {
+    const t = TENSES.find(x => x.id === ex.t);
+    root.innerHTML = `<p class="kind">Nytt verb · ${esc(t.fr)}</p><h2 class="q"><span class="verb-inf">${esc(ex.vb.v)}</span> <small class="muted">(${esc(ex.vb.sv)})</small></h2>
+      <p class="muted small">${esc(t.sv[0].toUpperCase() + t.sv.slice(1))} – t.ex. ”${esc(t.ex)}”. Tryck på raderna och lyssna, sedan övar du.</p>
+      ${verbTableHtml(ex.vb, ex.t)}`;
+    $$('.vrow', root).forEach(b => b.onclick = () => say(b.dataset.say));
+    const c = $('#check'); if (c) c.textContent = 'Jag är redo';
+    setReady(true);
+    cur.check = () => ({ learn: true });
+  },
   verb(ex, root) {
     const t = TENSES.find(x => x.id === ex.t), forms = conj(ex.vb, ex.t, ex.i), p = pron(ex.t, ex.i, forms[0]);
+    if (ex.mc == null) { ex.mc = (verbScore(ex.vb, ex.t) || 0) < 3; if (ex.mc) ex.opts = verbOpts(ex.vb, ex.t, ex.i); }
     root.innerHTML = `<p class="kind">Verb · ${esc(t.fr)}</p><h2 class="q"><span class="verb-inf">${esc(ex.vb.v)}</span> <small class="muted">(${esc(ex.vb.sv)})</small></h2>
       <p class="muted small">${esc(t.sv[0].toUpperCase() + t.sv.slice(1))} – t.ex. ”${esc(t.ex)}”</p>
       <div class="verb-card"><span class="verb-p">${esc(p)}${p.endsWith("'") ? '' : '&nbsp;'}</span><span class="verb-gap" id="vgap">…</span></div>
       ${ex.mc ? `<div class="opts">${ex.opts.map((o, k) => `<button class="opt" data-k="${k}">${esc(o)}</button>`).join('')}</div>`
-        : `<input id="inp" class="verb-inp" placeholder="Skriv verbformen…" autocapitalize="off" autocomplete="off" spellcheck="false">${accentBar()}`}`;
-    const full = `${p}${p.endsWith("'") ? '' : ' '}${shown(ex.vb, ex.t, ex.i)}`;
-    const sayFull = `${p.replace(/\/(elle|qu'elle)s?/, '')}${p.endsWith("'") ? '' : ' '}${forms[0]}`;
+        : `<input id="inp" class="verb-inp" placeholder="Skriv verbformen…" autocapitalize="off" autocomplete="off" spellcheck="false">${accentBar()}`}
+      <button class="hint-b vt-b" id="vtB">📖 Tabell</button>`;
+    $('#vtB', root).onclick = () => {
+      if (!L.checked) L.hints = (L.hints || 0) + 1;
+      sheet(`<h2>${esc(ex.vb.v)} · ${esc(t.fr)}</h2>${verbTableHtml(ex.vb, ex.t)}<button class="btn primary" data-close>Stäng</button>`,
+        w => $$('.vrow', w).forEach(b => b.onclick = () => say(b.dataset.say)));
+    };
+    const full = verbShown(ex.vb, ex.t, ex.i);
+    const sayFull = verbSay(ex.vb, ex.t, ex.i);
     if (ex.mc) {
       let sel = null;
       $$('.opt', root).forEach(b => b.onclick = () => { if (L.checked) return; sel = ex.opts[+b.dataset.k]; $('#vgap', root).textContent = sel; $$('.opt', root).forEach(x => x.classList.toggle('sel', x === b)); setReady(true); });
