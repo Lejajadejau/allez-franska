@@ -85,7 +85,7 @@ let actx;
 function tones(notes, { type = 'triangle', vol = 0.16, len = 0.28, gap = 0.11 } = {}) {
   if (!S?.sound) return;
   try {
-    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (!audioCtx()) return;
     if (actx.state !== 'running') actx.resume?.();
     notes.forEach((f, i) => {
       if (!f) return;
@@ -148,8 +148,23 @@ const bufCache = new Map();
 function audioCtx() {
   if (actx) return actx;
   const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
-  try { actx = new C(); } catch { actx = null; }
+  try { actx = new C(); } catch { actx = null; return null; }
+  const me = actx;
+  // iPhone: ett telefonsamtal eller en annan app avbryter ljudet ("interrupted"). Då byggs ljudet om vid nästa tryck.
+  me.onstatechange = () => { if (me === actx && me.state === 'interrupted') audioStale = true; };
   return actx;
+}
+let audioStale = false;
+function resetAudio() {
+  const old = actx; audioStale = false; actx = null; curSrc = null;
+  try { old?.close?.(); } catch { }
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { }
+  [phraseAudio, storyAudio].forEach(a => { try { if (a) { a.pause(); a.load(); } } catch { } });
+  if (typeof ambCur !== 'undefined' && ambCur) { ambCur = null; if (ambWant && !LM) { const w = ambWant; ambWant = null; setAmbience(w); } }
+}
+function checkAudio() {
+  if (audioStale || (actx && actx.state === 'interrupted') || (actx && actx.state === 'closed')) { resetAudio(); return; }
+  if (actx && actx.state !== 'running') actx.resume?.().catch(() => { });
 }
 function levelGain(buf) {
   const d = buf.getChannelData(0), W = 512; let sum = 0, n = 0, pk = 0;
@@ -202,6 +217,7 @@ function playNorm(el, url, { rate = 1, onend, onfail } = {}) {
 function preloadUrl(url) { if (waReady(1)) loadBuf(url).catch(() => { }); }
 // Web Audio måste startas av ett tryck
 document.addEventListener('pointerdown', () => {
+  checkAudio();
   const c = AUDIO_ROOT ? audioCtx() : null; if (!c) return;
   if (c.state !== 'running') c.resume?.().catch(() => { });
   if (!c.__unlocked) { c.__unlocked = true; try { const s = c.createBufferSource(); s.buffer = c.createBuffer(1, 1, 22050); s.connect(c.destination); s.start(0); } catch { } }
@@ -2126,7 +2142,7 @@ const ambUrl = id => AUDIO_ROOT ? `${AUDIO_ROOT}amb/${id}.mp3` : '';
 const AMB_VOL = 0.2, AMB_DUCK = 0.05;
 const ambBufs = {};
 let ambCur = null, ambWant = null, ambLast = -1;
-function getCtx() { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); } catch { } return actx; }
+function getCtx() { return audioCtx(); }
 function ambBuffer(id) {
   if (!ambBufs[id]) ambBufs[id] = fetch(ambUrl(id)).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
     .then(ab => new Promise((res, rej) => getCtx().decodeAudioData(ab, res, rej))).catch(e => { delete ambBufs[id]; throw e; });
@@ -2157,6 +2173,7 @@ setInterval(() => {
 }, 150);
 document.addEventListener('pointerdown', () => { const c = actx; if (c && c.state === 'suspended') c.resume().catch(() => { }); }, { passive: true });
 document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && actx) { const c = actx; if (c.state !== 'running') c.resume?.().catch(() => { }); setTimeout(() => { if (c === actx && c.state !== 'running') audioStale = true; }, 600); }
   if (document.hidden) { const w = ambWant; setAmbience(null); ambWant = w; }
   else if (ambWant && !LM) { const w = ambWant; ambWant = null; setAmbience(w); }
   if (!document.hidden && LM?.playing) lockWake(true);
