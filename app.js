@@ -10,8 +10,9 @@ import { SCENES1 } from './listen1.js';
 import { SCENES2 } from './listen2.js';
 import { SCENES3 } from './listen3.js';
 import { SCENESB } from './listen4.js';
+import { SCENES5 } from './listen5.js';
 import { RADIO, PAIRS } from './radio.js';
-const SCENES = { ...SCENES1, ...SCENES2, ...SCENES3 };
+const SCENES = { ...SCENES1, ...SCENES2, ...SCENES3, ...SCENES5 };
 const SEASONS = [SERIAL, SERIAL2, SERIAL3];
 const EPS = SEASONS.flatMap((se, si) => se.eps.map(e => (e.season = si, e)));
 const epNo = ep => SEASONS[ep.season].eps.indexOf(ep) + 1;
@@ -1301,7 +1302,8 @@ function startVerbs() {
   startSession({ kind: 'practice', verb: true, queue });
 }
 // ================= Lyssna och svara / Radio / Hörövning =================
-const sceneUrl = (id, i) => `${AUDIO_ROOT}ls/${id}-${i}.mp3`;
+const FIXA = { 'vi5x-2': 'vi5x-2b', 'r-vignoble-0': 'r-vignoble-0b', 'r-tribunal-0': 'r-tribunal-0b' };
+const sceneUrl = (id, i) => { const k = `${id}-${i}`; return `${AUDIO_ROOT}ls/${FIXA[k] || k}.mp3`; };
 let sceneTok = 0;
 function playScene(id, lines, onDone) {
   const tok = ++sceneTok; stopAudio();

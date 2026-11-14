@@ -420,7 +420,7 @@ export const SCENESB = {
   vi2: { ic: '❄️', lines: [
     ['f', "Vous croyez qu'il gèlera cette nuit ?", 'Tror du att det blir frost i natt?'],
     ['c', "Peut-être. Si la température descend sous zéro, on allumera des bougies entre les rangs pour protéger les vignes.", 'Kanske. Om temperaturen går under noll tänder vi ljus mellan raderna för att skydda vinrankorna.'] ],
-    q: { q: "Que fera Monsieur Vidal s'il gèle ?", o: ['Il allumera des bougies entre les rangs', 'Il couvrira les vignes', 'Il cueillera tout le raisin'] } },
+    q: { q: "Que fera Madame Vidal s'il gèle ?", o: ['Il allumera des bougies entre les rangs', 'Il couvrira les vignes', 'Il cueillera tout le raisin'] } },
   vi3: { ic: '🍷', lines: [
     ['m', "Ce vin a un goût de fruits rouges, non ?", 'Det här vinet smakar röda bär, eller hur?'],
     ['c', "Oui, de cerise surtout. Il se marie très bien avec le fromage.", 'Ja, mest körsbär. Det passar mycket bra till ost.'],
@@ -434,8 +434,8 @@ export const SCENESB = {
   vi5: { ic: '🥂', lines: [
     ['n', "Le soir de la fête.", 'På festkvällen.'],
     ['c', "Je lève mon verre à tous ceux qui ont travaillé dans les vignes. Sans vous, il n'y aurait pas de vin cette année !", 'Jag höjer mitt glas för alla som har arbetat i vingården. Utan er skulle det inte bli något vin i år!'],
-    ['l', "À la santé de Monsieur Vidal !", 'Skål för Monsieur Vidal!'] ],
-    q: { q: 'À qui Monsieur Vidal lève-t-il son verre ?', o: ['À ceux qui ont travaillé dans les vignes', 'À sa famille', 'Aux clients'] } },
+    ['l', "À la santé de Madame Vidal !", 'Skål för Madame Vidal!'] ],
+    q: { q: 'À qui Madame Vidal lève-t-elle son verre ?', o: ['À ceux qui ont travaillé dans les vignes', 'À sa famille', 'Aux clients'] } },
 
   // ——— Le Tribunal (C1) ———
   tr1: { ic: '🏛️', lines: [

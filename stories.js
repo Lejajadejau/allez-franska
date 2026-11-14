@@ -6,6 +6,7 @@
 import { STORIES2 } from './stories2.js';
 import { STORIES3 } from './stories3.js';
 import { STORIES4 } from './stories4.js';
+import { STORIES5 } from './stories5.js';
 
 export const STORIES = {
   boulangerie: [
@@ -405,4 +406,4 @@ export const STORIES = {
     speak: 4 },
   ],
 };
-Object.assign(STORIES, STORIES2, STORIES3, STORIES4);
+Object.assign(STORIES, STORIES2, STORIES3, STORIES4, STORIES5);

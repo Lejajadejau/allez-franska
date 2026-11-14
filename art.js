@@ -162,6 +162,10 @@ const EXTRA = {
   noel: { back: '', front: () => '' },
   maison: { back: '', front: () => person(40, 198, { item: 'bag', top: '#5f7fa0' }) + person(318, 197, { s: .8, item: 'arms', top: '#e3a33b' }) + dog(340, 198, '#8a5a44') + tree(352, 186, .8) },
   magasin: { back: '', front: () => person(36, 198, { item: 'bag', top: '#c8553d' }) + person(62, 199, { dress: 1, top: '#7a3e6b', item: 'bag' }) + person(300, 198, { hat: '#2a3d52', top: '#3f6f8f' }) + person(326, 199, { s: .8, item: 'balloon' }) + flyingGulls() },
+  restaurant: { back: '', front: () => person(30, 198, { item: 'bag', top: '#3f6a9a' }) + person(52, 199, { dress: 1, top: '#d06a8e' }) + cat(330, 198, '#3d3d3d') + flyingGulls() },
+  stade: { back: '', front: () => person(150, 196, { item: 'arms', top: '#3f8f5a', cls: 'a-dance' }) + person(176, 197, { item: 'arms', top: '#3f8f5a', cls: 'a-dance' }) + person(300, 197, { s: .8, item: 'balloon' }) },
+  cinema: { back: '', front: () => person(40, 198, { dress: 1, top: '#8a5aa8', item: 'bag' }) + person(62, 199, { top: '#2f4766' }) + person(310, 198, { s: .8, item: 'balloon' }) + person(330, 199, { dress: 1 }) },
+  camping: { back: '', front: () => person(250, 196, { item: 'bag', top: '#e3a33b' }) + person(272, 197, { s: .75, item: 'arms', top: '#c8553d' }) + dog(300, 198, '#c49a6c') },
 };
 
 // ---------- Scener ----------
@@ -589,6 +593,82 @@ function magasin() {
   return s + `</svg>`;
 }
 
+function restaurant() {
+  let s = svgOpen('#f2c9a0', '#f6e6cf') + cloud(70, 24, 0.8);
+  s += house(0, 92, 54, 84) + house(306, 96, 54, 80);
+  s += `<rect x="64" y="56" width="232" height="120" fill="#f1dcc4" stroke="${INK}" stroke-width="2"/>`;
+  s += `<rect x="56" y="44" width="248" height="16" fill="#8a2f28" stroke="${INK}" stroke-width="2"/>`;
+  s += `<rect x="110" y="64" width="140" height="22" rx="3" fill="#b8433a" stroke="${INK}" stroke-width="1.6"/><text x="180" y="80" text-anchor="middle" font-size="12" font-family="Fraunces,Georgia,serif" font-weight="700" fill="#fbf3e4" letter-spacing="1">CHEZ BASTIEN</text>`;
+  // markis
+  for (let i = 0; i < 9; i++) s += `<path d="M${68 + i * 25} 96 h25 l-3 14 h-19z" fill="${i % 2 ? '#fbf3e4' : '#b8433a'}" stroke="${INK}" stroke-width="1.1"/>`;
+  s += `<rect x="84" y="114" width="56" height="40" fill="#cfe4ec" stroke="${INK}" stroke-width="1.6"/><rect x="220" y="114" width="56" height="40" fill="#cfe4ec" stroke="${INK}" stroke-width="1.6"/>`;
+  s += `<path d="M160 176 v-50 h40 v50z" fill="#6b3f22" stroke="${INK}" stroke-width="1.6"/><circle cx="194" cy="152" r="1.8" fill="#f2c46d"/>`;
+  // menytavla
+  s += `<g transform="translate(36 176)"><path d="M-12 0 l6 -34 h12 l6 34" fill="none" stroke="#6b3f22" stroke-width="2"/><rect x="-11" y="-34" width="22" height="24" fill="#2f3b34" stroke="${INK}" stroke-width="1.3"/><path d="M-7 -28 h14 M-7 -23 h10 M-7 -18 h12" stroke="#fbf3e4" stroke-width="1.1"/></g>`;
+  // bord på terrassen
+  [110, 250].forEach(x => s += cafeTable(x, 176, '#b8433a'));
+  s += cobbles(176, 360, 24);
+  return s + `</svg>`;
+}
+
+function stade() {
+  let s = svgOpen('#bfe0f0', '#e9f2d8') + cloud(60, 22) + cloud(290, 30, 0.8);
+  // läktare
+  s += `<path d="M10 92 h340 v-26 h-340z" fill="#d9d2c4" stroke="${INK}" stroke-width="1.6"/>`;
+  for (let i = 0; i < 26; i++) s += `<circle class="a-blink" style="animation-delay:${-(i % 5) * .4}s" cx="${20 + i * 12.8}" cy="${76 + (i % 2) * 6}" r="3.6" fill="${CLOTH[i % CLOTH.length]}"/>`;
+  s += `<path d="M10 66 l20 -14 h300 l20 14" fill="#3f8f5a" stroke="${INK}" stroke-width="1.6"/>`;
+  // planen
+  s += `<rect x="0" y="92" width="360" height="108" fill="#7fbf6a"/>`;
+  for (let i = 0; i < 6; i++) s += `<rect x="${i * 60}" y="92" width="30" height="108" fill="#8fcb78" opacity=".6"/>`;
+  s += `<rect x="20" y="104" width="320" height="86" fill="none" stroke="#fbfbf7" stroke-width="2"/><path d="M180 104 v86" stroke="#fbfbf7" stroke-width="2"/><circle cx="180" cy="147" r="16" fill="none" stroke="#fbfbf7" stroke-width="2"/>`;
+  // mål
+  s += `<g stroke="${INK}" stroke-width="1.6" fill="none"><path d="M20 130 h-14 v36 h14"/></g><g stroke="#fbfbf7" stroke-width=".7" opacity=".8">${[0, 1, 2, 3].map(k => `<path d="M${8 + k * 3} 130 v36"/>`).join('')}</g>`;
+  s += `<g stroke="${INK}" stroke-width="1.6" fill="none"><path d="M340 130 h14 v36 h-14"/></g>`;
+  s += `<g class="a-bob"><circle cx="210" cy="170" r="5" fill="#fbfbf7" stroke="${INK}" stroke-width="1.2"/><path d="M207 168 l3 2 l3 -2" stroke="${INK}" stroke-width=".8" fill="none"/></g>`;
+  // flaggor
+  s += `<g class="a-flag"><path d="M40 52 v-26 l14 5 l-14 5" fill="#c8553d" stroke="${INK}" stroke-width="1.2"/><path d="M320 52 v-26 l14 5 l-14 5" fill="#3f6a9a" stroke="${INK}" stroke-width="1.2"/></g>`;
+  return s + `</svg>`;
+}
+
+function cinema() {
+  let s = svgOpen('#2b2d4f', '#5a4d7a');
+  for (let i = 0; i < 18; i++) s += `<circle class="a-blink" style="animation-delay:${-(i % 4) * .6}s" cx="${(i * 53) % 360}" cy="${8 + (i * 17) % 40}" r="1.2" fill="#fff6b0"/>`;
+  s += house(0, 90, 54, 86, { plaster: '#d8cdbd' }) + house(306, 94, 54, 82, { plaster: '#d8cdbd' });
+  s += `<rect x="64" y="46" width="232" height="130" fill="#e9dcc4" stroke="${INK}" stroke-width="2"/>`;
+  s += `<path d="M64 46 l116 -26 l116 26z" fill="#5b3f8f" stroke="${INK}" stroke-width="2"/>`;
+  // skylt med lampor
+  s += `<rect x="96" y="56" width="168" height="30" rx="4" fill="#422c6b" stroke="${INK}" stroke-width="1.8"/><text x="180" y="77" text-anchor="middle" font-size="14" font-family="Fraunces,Georgia,serif" font-weight="700" fill="#f2c46d" letter-spacing="2">CINÉ LUMIÈRE</text>`;
+  for (let i = 0; i < 15; i++) s += `<circle class="a-blink" style="animation-delay:${-(i % 3) * .5}s" cx="${100 + i * 11.4}" cy="58" r="1.8" fill="#fff6b0"/>`;
+  // affischer
+  const poster = (x, c, t) => `<rect x="${x}" y="96" width="36" height="50" fill="${c}" stroke="${INK}" stroke-width="1.4"/><circle cx="${x + 18}" cy="114" r="8" fill="#fbf3e4" opacity=".75"/><text x="${x + 18}" y="140" text-anchor="middle" font-size="6" font-family="Nunito,sans-serif" font-weight="900" fill="#fbf3e4">${t}</text>`;
+  s += poster(76, '#c8553d', 'LE PHARE') + poster(248, '#3f6a9a', 'MARÉE');
+  s += `<path d="M150 176 v-62 h60 v62z" fill="#7a2e3a" stroke="${INK}" stroke-width="1.8"/><path d="M180 114 v62" stroke="${INK}" stroke-width="1.2"/>`;
+  s += `<rect x="128" y="100" width="104" height="10" fill="#c8553d" stroke="${INK}" stroke-width="1.2"/>`;
+  // röd matta
+  s += `<path d="M150 176 h60 l14 24 h-88z" fill="#b8433a" stroke="${INK}" stroke-width="1.2"/>`;
+  s += `<rect x="0" y="176" width="150" height="24" fill="#4a4060"/><rect x="210" y="176" width="150" height="24" fill="#4a4060"/>`;
+  return s + `</svg>`;
+}
+
+function camping() {
+  let s = svgOpen('#b9dcef', '#e7efd2') + cloud(80, 26) + cloud(290, 20, 0.7);
+  s += `<path d="M0 120 q60 -50 120 -14 q50 -44 120 -6 q60 -40 120 0 v80 h-360z" fill="#9cc27e" stroke="${INK}" stroke-width="1.6"/>`;
+  s += `<rect x="0" y="150" width="360" height="50" fill="#b9d48f"/>`;
+  // tallar
+  const pine = (x, y, k = 1) => `<g transform="translate(${x} ${y}) scale(${k})"><rect x="-2" y="-12" width="4" height="12" fill="#7a5240"/><path d="M0 -60 l14 22 h-8 l12 18 h-8 l10 16 h-40 l10 -16 h-8 l12 -18 h-8z" fill="#4f7a43" stroke="${INK}" stroke-width="1.3" stroke-linejoin="round"/></g>`;
+  s += pine(24, 150, 1.1) + pine(52, 156, .8) + pine(330, 152, 1.15) + pine(304, 158, .8);
+  // ån
+  s += `<path d="M120 200 q20 -30 70 -36 q60 -6 90 -20" fill="none" stroke="#7fb4d0" stroke-width="10" stroke-linecap="round"/>`;
+  // tält
+  const tent = (x, y, c) => `<g transform="translate(${x} ${y})"><path d="M-26 0 l26 -36 l26 36z" fill="${c}" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/><path d="M0 -36 l-8 36 h16z" fill="#3d2c29" opacity=".35"/><path d="M-30 0 l-6 4 M30 0 l6 4" stroke="${INK}" stroke-width="1.2"/></g>`;
+  s += tent(110, 168, '#e3a33b') + tent(196, 160, '#c8553d');
+  // lägereld
+  s += `<g transform="translate(150 176)"><path d="M-10 0 l20 -4 M-10 -4 l20 4" stroke="#6b3f22" stroke-width="3" stroke-linecap="round"/><path class="a-sway" d="M-6 -4 q6 -18 6 -18 q4 10 6 18z" fill="#f2c46d" stroke="#c8553d" stroke-width="1.2"/></g>`;
+  // skylt
+  s += `<g transform="translate(78 186)"><rect x="-2" y="-30" width="4" height="30" fill="#7a5240"/><rect x="-36" y="-40" width="72" height="16" rx="3" fill="#f6e3b4" stroke="${INK}" stroke-width="1.3"/><text x="0" y="-29" text-anchor="middle" font-size="7" font-family="Nunito,sans-serif" font-weight="900" fill="#4f6a26">CAMPING DES PINS</text></g>`;
+  return s + `</svg>`;
+}
+
 function enrich(id, svg) {
   const e = EXTRA[id]; if (!svg || !e) return svg;
   if (e.back) { const i = svg.indexOf('/>', svg.indexOf('fill="url(#sky')); if (i > 0) svg = svg.slice(0, i + 2) + e.back + svg.slice(i + 2); }
@@ -596,7 +676,7 @@ function enrich(id, svg) {
   return svg.slice(0, j) + f + svg.slice(j);
 }
 export function scene(id) {
-  return enrich(id, ({ boulangerie, marche, tram: tramScene, police, port, ecole, cafe, gare, medecin, hotel, poste, plage, anniversaire, mairie, festival, vignoble, tribunal, noel, maison, magasin })[id]?.() || '');
+  return enrich(id, ({ boulangerie, marche, tram: tramScene, police, port, ecole, cafe, gare, medecin, hotel, poste, plage, anniversaire, mairie, festival, vignoble, tribunal, noel, maison, magasin, restaurant, stade, cinema, camping })[id]?.() || '');
 }
 
 // Stadssilhuett till startsidan
@@ -829,6 +909,43 @@ export function character(id, mood = 'happy') {
       ${face}
       <circle cx="35" cy="54" r="2.4" fill="#f2c46d"/><circle cx="65" cy="54" r="2.4" fill="#f2c46d"/>
       <g transform="translate(82 104)"><path d="M-12 -14 h24 l-3 26 h-18z" fill="#c8553d" stroke="${INK}" stroke-width="1.4"/><path d="M-6 -14 q6 -10 12 0" fill="none" stroke="${INK}" stroke-width="1.4"/></g>`;
+  } else if (id === 'bastien') {
+    body = `
+      <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#fbfbf7" stroke="${INK}" stroke-width="2"/>
+      <path d="M50 76 v56" stroke="${INK}" stroke-width="1"/><circle cx="44" cy="90" r="2" fill="${INK}"/><circle cx="44" cy="104" r="2" fill="${INK}"/><circle cx="56" cy="90" r="2" fill="${INK}"/><circle cx="56" cy="104" r="2" fill="${INK}"/>
+      <path d="M36 74 l14 10 l14 -10" fill="#b8433a" stroke="${INK}" stroke-width="1.4"/>
+      ${face}
+      <path d="M40 54 q5 -4 10 0 q5 -4 10 0 q-5 5 -10 1 q-5 4 -10 -1z" fill="#3d2c29" stroke="${INK}" stroke-width="1"/>
+      <path d="M30 34 h40 v-6 q8 -10 -2 -18 q-6 -10 -18 -4 q-12 -6 -18 4 q-10 8 -2 18z" fill="#fbfbf7" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+      <g transform="translate(84 100) rotate(-20)"><rect x="-2" y="-2" width="4" height="22" rx="2" fill="#8a5a44" stroke="${INK}" stroke-width="1.1"/><ellipse cx="0" cy="-8" rx="7" ry="8" fill="#c9ccd1" stroke="${INK}" stroke-width="1.3"/></g>`;
+  } else if (id === 'karima') {
+    body = `
+      <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#3f8f5a" stroke="${INK}" stroke-width="2"/>
+      <path d="M30 132 l6 -52 M70 132 l-6 -52" stroke="#fbfbf7" stroke-width="3"/>
+      <path d="M40 74 l10 20 l10 -20" fill="none" stroke="${INK}" stroke-width="1.2"/><circle cx="50" cy="98" r="4" fill="#f2c46d" stroke="${INK}" stroke-width="1.2"/>
+      <path d="M68 46 q22 2 18 30 q-4 -14 -16 -16z" fill="#1f1a17" stroke="${INK}" stroke-width="1.6"/>
+      ${face.replace('#f4cba6', '#c68a62')}
+      <path d="M28 40 q4 -24 24 -24 q18 0 22 18 l12 4 q-30 -2 -58 2z" fill="#3f8f5a" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/>
+      <path d="M30 42 q2 -8 6 -10" stroke="#1f1a17" stroke-width="5" stroke-linecap="round"/>`;
+  } else if (id === 'simon') {
+    body = `
+      <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#8a6d52" stroke="${INK}" stroke-width="2"/>
+      <path d="M38 76 l12 24 l12 -24" fill="#e9dcc4" stroke="${INK}" stroke-width="1.4"/><path d="M46 84 l4 6 l4 -6 l-4 20z" fill="#5b3f8f" stroke="${INK}" stroke-width="1"/>
+      <circle cx="40" cy="112" r="1.8" fill="${INK}"/><circle cx="60" cy="112" r="1.8" fill="${INK}"/>
+      <path d="M28 44 q-2 -26 22 -26 q24 0 22 26 q-6 -14 -22 -14 q-16 0 -22 14z" fill="#b8b2a8" stroke="${INK}" stroke-width="2"/>
+      ${face}
+      <circle cx="42" cy="46" r="7" fill="none" stroke="${INK}" stroke-width="2"/><circle cx="58" cy="46" r="7" fill="none" stroke="${INK}" stroke-width="2"/><path d="M49 46 h2" stroke="${INK}" stroke-width="2"/>
+      <g transform="translate(84 102)"><circle r="14" fill="#3d3d3d" stroke="${INK}" stroke-width="1.6"/><circle r="4" fill="#c9ccd1"/>${[0, 1, 2, 3, 4].map(k => `<circle cx="${Math.cos(k * 1.256) * 9}" cy="${Math.sin(k * 1.256) * 9}" r="2.6" fill="#c9ccd1"/>`).join('')}</g>`;
+  } else if (id === 'juliette') {
+    body = `
+      <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#b9a26a" stroke="${INK}" stroke-width="2"/>
+      <path d="M36 80 h10 v12 h-10z M54 80 h10 v12 h-10z" fill="#a08a55" stroke="${INK}" stroke-width="1.1"/>
+      <path d="M40 74 l10 8 l10 -8" fill="none" stroke="${INK}" stroke-width="1.2"/>
+      <path d="M26 60 q-6 -42 24 -42 q30 0 24 42 l-6 -18 q-18 -10 -36 0z" fill="#d9a441" stroke="${INK}" stroke-width="2"/>
+      <path d="M72 52 q10 10 4 30" fill="none" stroke="#d9a441" stroke-width="7" stroke-linecap="round"/>
+      ${face}
+      <path d="M18 34 q32 -10 64 0 l-6 4 q-26 -6 -52 0z" fill="#6f8f3a" stroke="${INK}" stroke-width="1.6"/><path d="M30 34 q4 -18 20 -18 q16 0 20 18z" fill="#6f8f3a" stroke="${INK}" stroke-width="1.6"/>
+      <g transform="translate(84 104)"><rect x="-8" y="-10" width="16" height="20" rx="3" fill="#f2c46d" stroke="${INK}" stroke-width="1.4"/><path d="M-6 -14 q6 -8 12 0" fill="none" stroke="${INK}" stroke-width="1.4"/><circle cy="0" r="4" class="a-blink" fill="#fff6b0"/></g>`;
   } else if (id === 'you') {
     body = `
       <path d="M22 132 q4 -54 28 -58 q24 4 28 58z" fill="#f2c46d" stroke="${INK}" stroke-width="2"/>
@@ -844,7 +961,7 @@ export function character(id, mood = 'happy') {
 
 // ---------- Stadskarta över Port-Saint-Clément ----------
 // units: [{fr, color, state: 'done'|'cur'|'open'|'locked'}], i kursordning
-const MAP_POS = [[46, 236], [92, 214], [140, 228], [186, 206], [232, 222], [212, 172], [160, 160], [106, 150], [54, 128], [96, 96], [150, 108], [204, 90], [170, 52], [114, 44], [60, 62], [22, 100], [28, 38], [84, 28], [146, 22], [212, 34]];
+const MAP_POS = [[46, 236], [92, 214], [140, 228], [186, 206], [232, 222], [212, 172], [160, 160], [106, 150], [54, 128], [96, 96], [150, 108], [204, 90], [170, 52], [114, 44], [60, 62], [22, 100], [28, 38], [84, 28], [146, 22], [212, 34], [232, 124], [182, 128], [126, 186], [74, 190]];
 export function townMap(units) {
   const W = 360, H = 270;
   let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="town-map" role="img" aria-label="Karta över Port-Saint-Clément">`;

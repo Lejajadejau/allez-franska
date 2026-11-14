@@ -35,7 +35,7 @@ export const SCENES3 = {
   vi2: { ic: '🌤️', lines: [
     ['f', "Demain, il fera beau dans le Sud, mais des orages éclateront en fin de journée.", 'I morgon blir det fint väder i södern, men det blir åskväder mot kvällen.'],
     ['c', "Alors on finira la vigne du haut avant quatre heures. Pas question de perdre la récolte !", 'Då gör vi klart den övre vingården före klockan fyra. Vi får inte förlora skörden!'] ],
-    q: { q: 'Pourquoi Monsieur Vidal veut-il finir avant quatre heures ?', o: ['Des orages sont prévus', 'Il fait trop chaud', 'Les vendangeurs partent'] } },
+    q: { q: 'Pourquoi Madame Vidal veut-elle finir avant quatre heures ?', o: ['Des orages sont prévus', 'Il fait trop chaud', 'Les vendangeurs partent'] } },
   vi3: { ic: '🍷', lines: [
     ['c', "Ici, à la cave, le vin repose dans des tonneaux en chêne pendant deux ans.", 'Här i källaren vilar vinet i ekfat i två år.'],
     ['l', "Et les enfants peuvent goûter ?", 'Och får barnen smaka?'],

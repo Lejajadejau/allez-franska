@@ -128,19 +128,19 @@ export const RADIO = {
       { q: 'Pourquoi a-t-on failli annuler ?', o: ['À cause de la tempête', "Faute d'argent", 'À cause d’une grève'] },
       { q: 'Qu’ont fait les bénévoles ?', o: ['Ils ont remonté la scène', 'Ils ont vendu les billets', 'Ils ont nettoyé la plage'] } ] },
   vignoble: { title: 'Le vin et le climat', lines: [
-    ['h', "Monsieur Vidal, le climat change. Est-ce que vous le sentez dans vos vignes ?", 'Monsieur Vidal, klimatet förändras. Märker ni det i era vingårdar?'],
+    ['h', "Madame Vidal, le climat change. Est-ce que vous le sentez dans vos vignes ?", 'Madame Vidal, klimatet förändras. Märker ni det i era vingårdar?'],
     ['c', "Énormément. Il y a trente ans, on vendangeait fin septembre. Aujourd'hui, on commence parfois mi-août.", 'Enormt. För trettio år sedan skördade vi i slutet av september. I dag börjar vi ibland i mitten av augusti.'],
     ['h', "Comment vous vous adaptez ?", 'Hur anpassar ni er?'],
     ['c', "On plante des cépages qui supportent mieux la chaleur, et on travaille la nuit pendant les canicules.", 'Vi planterar druvsorter som tål värme bättre, och vi arbetar på natten under värmeböljorna.'] ],
     qs: [ { q: 'Quand vendangeait-on il y a trente ans ?', o: ['Fin septembre', 'Mi-août', 'En octobre'] },
-      { q: 'Que plante Monsieur Vidal aujourd’hui ?', o: ['Des cépages qui supportent la chaleur', 'Des arbres fruitiers', 'Des légumes'] },
+      { q: 'Que plante Madame Vidal aujourd’hui ?', o: ['Des cépages qui supportent la chaleur', 'Des arbres fruitiers', 'Des légumes'] },
       { q: 'Quand travaille-t-on pendant les canicules ?', o: ['La nuit', 'Le matin', "L'après-midi"] } ] },
   tribunal: { title: "Le droit expliqué", lines: [
-    ['h', "Dans notre rubrique « Le droit expliqué », Maître Mercier répond à vos questions.", 'I vårt inslag ”Juridiken förklarad” svarar advokat Mercier på era frågor.'],
+    ['h', "Dans notre rubrique « Le droit expliqué », la juge Mercier répond à vos questions.", 'I vårt inslag ”Juridiken förklarad” svarar domaren Mercier på era frågor.'],
     ['l', "Bonjour ! Mon voisin taille sa haie, mais les branches tombent dans mon jardin. Qui doit les ramasser ?", 'Hej! Min granne klipper sin häck, men grenarna faller ner i min trädgård. Vem ska plocka upp dem?'],
     ['c', "En principe, c'est à lui de le faire. Toutefois, avant d'aller en justice, je vous conseille vivement de lui en parler : un bon accord vaut mieux qu'un long procès.", 'I princip är det han som ska göra det. Innan ni går till domstol råder jag er dock bestämt att prata med honom: en bra uppgörelse är bättre än en lång rättegång.'] ],
     qs: [ { q: 'Qui doit ramasser les branches, en principe ?', o: ['Le voisin', 'Léa', 'La mairie'] },
-      { q: 'Que conseille Maître Mercier ?', o: ['De parler au voisin', "D'aller directement en justice", 'De couper la haie elle-même'] },
+      { q: 'Que conseille la juge Mercier ?', o: ['De parler au voisin', "D'aller directement en justice", 'De couper la haie elle-même'] },
       { q: "Que signifie « un bon accord vaut mieux qu'un long procès » ?", o: ["Il vaut mieux s'entendre que se disputer longtemps", 'Les procès sont toujours gagnés', 'Il faut toujours un avocat'] } ] },
   noel: { title: 'Spécial Noël', lines: [
     ['h', "Émission spéciale Noël, en direct du marché ! Nicolas, quels sont les cadeaux les plus vendus ?", 'Specialprogram om jul, direkt från julmarknaden! Nicolas, vilka är de mest sålda julklapparna?'],
@@ -166,6 +166,37 @@ export const RADIO = {
     qs: [ { q: 'Quand commencent les soldes ?', o: ['Mercredi', 'Lundi', 'Samedi'] },
       { q: "Quelle est la réduction sur l'électronique ?", o: ['Trente pour cent', 'Cinquante pour cent', 'Vingt pour cent'] },
       { q: 'Quel conseil donne Chloé ?', o: ['Faire une liste', 'Venir le soir', 'Payer en liquide'] } ] },
+  restaurant: { title: 'La recette du chef', lines: [
+    ['h', "Aujourd'hui, Chef Bastien nous donne sa recette de soupe de poisson !", 'I dag ger kocken Bastien oss sitt recept på fisksoppa!'],
+    ['c', "C'est facile. Il vous faut trois poissons, des tomates, un oignon et un peu d'ail. Tout cuit doucement pendant quarante minutes.", 'Det är enkelt. Ni behöver tre fiskar, tomater, en lök och lite vitlök. Allt får sjuda i fyrtio minuter.'],
+    ['h', "Et le secret du chef ?", 'Och kockens hemlighet?'],
+    ['c', "Un peu d'orange ! Mais chut, ne le dites à personne.", 'Lite apelsin! Men tyst, säg det inte till någon.'] ],
+    qs: [ { q: 'Vilken rätt lagar Bastien?', o: ['Fisksoppa', 'Biff med pommes frites', 'Äppelpaj'] },
+      { q: 'Hur länge ska soppan koka?', o: ['I fyrtio minuter', 'I fyra minuter', 'I fyra timmar'] },
+      { q: 'Vad är kockens hemlighet?', o: ['Lite apelsin', 'Mycket salt', 'Choklad'] } ] },
+  stade: { title: 'Les résultats sportifs', lines: [
+    ['h', "Les résultats du week-end ! Coach Karima, votre équipe a joué samedi ?", 'Helgens resultat! Coach Karima, spelade ert lag i lördags?'],
+    ['c', "Oui, contre l'équipe de la gare. On a gagné trois à deux ! Le dernier but, à la dernière minute.", 'Ja, mot stationens lag. Vi vann med tre–två! Sista målet kom i sista minuten.'],
+    ['h', "Bravo ! Et la semaine prochaine ?", 'Grattis! Och nästa vecka?'],
+    ['c', "La demi-finale, dimanche à dix heures. Venez nombreux nous encourager !", 'Semifinalen, på söndag klockan tio. Kom och heja på oss!'] ],
+    qs: [ { q: 'Hur slutade matchen?', o: ['Tre–två', 'Två–två', 'Ett–noll'] },
+      { q: 'När kom det sista målet?', o: ['I sista minuten', 'I första minuten', 'I halvtid'] },
+      { q: 'När är semifinalen?', o: ['På söndag klockan tio', 'På lördag klockan tre', 'På måndag kväll'] } ] },
+  cinema: { title: 'La critique de la semaine', lines: [
+    ['h', "La critique de la semaine, avec Monsieur Simon, du Ciné Lumière.", 'Veckans recension, med Monsieur Simon från Ciné Lumière.'],
+    ['c', "Je vous conseille « La Dernière Marée », un film tourné ici, à Port-Saint-Clément. Il s'agit d'une famille de pêcheurs qui doit vendre son bateau.", 'Jag rekommenderar ”Det sista tidvattnet”, en film som spelats in här i Port-Saint-Clément. Den handlar om en fiskarfamilj som måste sälja sin båt.'],
+    ['h', "Et votre avis ?", 'Och vad tycker ni?'],
+    ['c', "Émouvant et drôle à la fois. Le seul défaut : il dure presque trois heures ! Prenez du pop-corn.", 'Gripande och rolig på samma gång. Det enda felet: den är nästan tre timmar lång! Ta med popcorn.'] ],
+    qs: [ { q: 'Où le film a-t-il été tourné ?', o: ['À Port-Saint-Clément', 'À Paris', 'En Italie'] },
+      { q: "De quoi parle le film ?", o: ["D'une famille de pêcheurs", "D'un festival", "D'un détective"] },
+      { q: 'Quel est le défaut du film ?', o: ['Il est trop long', "Il n'est pas drôle", 'La musique est mauvaise'] } ] },
+  camping: { title: 'Météo et nature', lines: [
+    ['w', "La météo du week-end : beau temps samedi, mais des orages violents dimanche après-midi.", 'Helgens väder: fint väder på lördag, men kraftiga åskväder på söndag eftermiddag.'],
+    ['h', "Juliette, vous tenez le camping des Pins. Un conseil pour les campeurs ?", 'Juliette, ni driver Camping des Pins. Något tips till campare?'],
+    ['c', "Profitez de samedi pour la randonnée. Et dimanche, si vous entendez le tonnerre, éloignez-vous des arbres et venez vous abriter à l'accueil.", 'Passa på att vandra på lördag. Och på söndag, om ni hör åskan, gå bort från träden och kom och sök skydd i receptionen.'] ],
+    qs: [ { q: 'Quel temps fera-t-il dimanche après-midi ?', o: ['Des orages violents', 'Du soleil', 'De la neige'] },
+      { q: 'Quand Juliette conseille-t-elle de faire la randonnée ?', o: ['Samedi', 'Dimanche', 'Lundi'] },
+      { q: "Que faut-il faire si on entend le tonnerre ?", o: ["S'éloigner des arbres", 'Rester dans sa tente', 'Aller à la plage'] } ] },
 };
 
 // Ljudpar: ord som är lätta att blanda ihop. Man hör ett av dem och väljer.

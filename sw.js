@@ -1,7 +1,7 @@
 // Service worker: gör att appen startar snabbt och fungerar offline.
-const CACHE = 'allez-v30';
+const CACHE = 'allez-v31';
 const AUDIO_CACHE = 'allez-audio'; // sparat ljud överlever appuppdateringar
-const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'content.js', 'art.js', 'stories.js', 'stories2.js', 'serial.js', 'serial2.js', 'serial3.js', 'listen1.js', 'listen2.js', 'listen3.js', 'listen4.js', 'radio.js', 'svmap.js', 'verbs.js', 'units2.js', 'units3.js', 'stories3.js', 'units4.js', 'stories4.js', 'audiomap.js', 'config.js', 'manifest.webmanifest', 'icons/icon-192.png'];
+const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'content.js', 'art.js', 'stories.js', 'stories2.js', 'serial.js', 'serial2.js', 'serial3.js', 'listen1.js', 'listen2.js', 'listen3.js', 'listen4.js', 'radio.js', 'svmap.js', 'verbs.js', 'units2.js', 'units3.js', 'stories3.js', 'units4.js', 'stories4.js', 'units5.js', 'stories5.js', 'listen5.js', 'audiomap.js', 'config.js', 'manifest.webmanifest', 'icons/icon-192.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE && k !== AUDIO_CACHE).map(k => caches.delete(k))))
