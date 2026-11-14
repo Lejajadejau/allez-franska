@@ -6,6 +6,11 @@ import { PH } from './audiomap.js';
 import { SERIAL } from './serial.js';
 import { SERIAL2 } from './serial2.js';
 import { SERIAL3 } from './serial3.js';
+import { SCENES1 } from './listen1.js';
+import { SCENES2 } from './listen2.js';
+import { SCENES3 } from './listen3.js';
+import { RADIO, PAIRS } from './radio.js';
+const SCENES = { ...SCENES1, ...SCENES2, ...SCENES3 };
 const SEASONS = [SERIAL, SERIAL2, SERIAL3];
 const EPS = SEASONS.flatMap((se, si) => se.eps.map(e => (e.season = si, e)));
 const epNo = ep => SEASONS[ep.season].eps.indexOf(ep) + 1;
@@ -229,7 +234,10 @@ function say(text, slow = false, opt = {}) {
   speechSynthesis.speak(u);
 }
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-const canSpeak = () => !!SR && S.speak && !S.speakBroken && Date.now() > (S.speakPausedUntil || 0);
+// Muntliga uppgifter: med mikrofon (taligenkänning) eller "säg högt själv" och jämför med inspelningen.
+// iPhone har dålig taligenkänning i webbappar, så där är "säg högt själv" standard.
+const micMode = () => !!SR && (S.speakMode || (isIOS ? 'self' : 'mic')) === 'mic' && !S.speakBroken;
+const canSpeak = () => S.speak !== false && Date.now() > (S.speakPausedUntil || 0);
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
 // ================= Tillstånd =================
@@ -641,7 +649,8 @@ function renderHome() {
     const weak = weakCount();
     const label = S.hearts < HEART_MAX ? '🏋️ Öva och få tillbaka ❤️' : weak ? `🏋️ Repetera ${weak} ${weak === 1 ? 'svårt ord eller mening' : 'svåra ord och meningar'}` : '🏋️ Snabbövning (+5 XP)';
     html += `<div class="chip-row"><button class="practice-chip" id="practice">${label}</button><button class="practice-chip listen-chip" id="listenB">🎧 Lyssna fritt</button></div>
-      <div class="chip-row"><button class="practice-chip dict-chip" id="dictB">✍️ Diktamen</button><button class="practice-chip verb-chip" id="verbB">🔤 Verbträning</button></div>`;
+      <div class="chip-row"><button class="practice-chip dict-chip" id="dictB">✍️ Diktamen</button><button class="practice-chip verb-chip" id="verbB">🔤 Verbträning</button></div>
+      ${AUDIO_ROOT ? '<div class="chip-row"><button class="practice-chip ear-chip" id="earB">👂 Hörövning</button></div>' : ''}`;
   }
 
   COURSE.forEach((un, u) => {
@@ -675,6 +684,11 @@ function renderHome() {
           <div class="story-lbl">${sDone ? '✓ ' : ''}Lyssna</div></div>`;
       });
     });
+    if (RADIO[un.id] && AUDIO_ROOT) {
+      const rOpen = unitDone(u), rDone = (S.radio || {})[un.id];
+      html += `<div class="node-row story-row"><button class="node story radio ${rOpen ? 'open' : 'locked'} ${rDone ? 'done' : ''}" data-radio="${u}" aria-label="Radio: ${esc(RADIO[un.id].title)}"><span class="ic">📻</span>${!rOpen ? '<span class="lk">🔒</span>' : ''}</button>
+        <div class="story-lbl">${rDone ? '✓ ' : ''}Radio</div></div>`;
+    }
     html += `</div></section>${ART.tramDivider()}`;
   });
   if (!FUTURE.length) html += `<section class="card fin"><div class="big-emoji">🎉</div><h2>Fin du voyage… pour l'instant !</h2><p class="muted">Du har sett hela Port-Saint-Clément. Fortsätt repetera för att få kronor på alla lektioner – fler kvarter kan byggas.</p></section>`;
@@ -685,7 +699,8 @@ function renderHome() {
   shell(html);
 
   $$('.node:not(.story)').forEach(n => n.onclick = () => nodeSheet(+n.dataset.u, +n.dataset.l));
-  $$('.node.story').forEach(n => n.onclick = () => { const [u, si] = n.dataset.story.split(':').map(Number); storySheet(u, si); });
+  $$('[data-radio]').forEach(n => n.onclick = () => radioSheet(+n.dataset.radio));
+  $$('.node.story:not(.radio)').forEach(n => n.onclick = () => { const [u, si] = n.dataset.story.split(':').map(Number); storySheet(u, si); });
   $$('[data-guide]').forEach(b => b.onclick = () => guide(+b.dataset.guide));
   const mc = $('.mapcard'); if (mc) mc.ontoggle = () => { S.mapOpen = mc.open; save(false); };
   $$('.map-pin').forEach(p => p.addEventListener('click', () => { const sec = $$('.unit')[+p.dataset.unit]; if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
@@ -694,6 +709,7 @@ function renderHome() {
   const lb = $('#listenB'); if (lb) lb.onclick = () => startListen();
   const db = $('#dictB'); if (db) db.onclick = startDictation;
   const vb = $('#verbB'); if (vb) vb.onclick = () => verbSheet();
+  const eb = $('#earB'); if (eb) eb.onclick = () => startEar();
   const sc = $('#serialB'); if (sc) sc.onclick = () => serialSheet();
   const rv = $('#reviewB'); if (rv) rv.onclick = startReview;
   const ng = $('#nextGo'); if (ng) ng.onclick = () => ng.dataset.practice ? startPractice() : nodeSheet(cur[0], cur[1]);
@@ -999,7 +1015,8 @@ function renderProfile() {
       <label><span>Ljudeffekter</span><input type="checkbox" id="setSound" ${S.sound ? 'checked' : ''}></label>
       ${'vibrate' in navigator ? `<label><span>Vibrationer</span><input type="checkbox" id="setHaptic" ${S.haptic !== false ? 'checked' : ''}></label>` : ''}
       ${AUDIO_ROOT ? `<label><span>Bakgrundsljud i kvarteren</span><input type="checkbox" id="setAmb" ${S.amb !== false ? 'checked' : ''}></label>` : ''}
-      <label><span>Taluppgifter (mikrofon)${SR ? '' : ' – stöds inte här'}</span><input type="checkbox" id="setSpeak" ${S.speak && !S.speakBroken ? 'checked' : ''} ${SR ? '' : 'disabled'}></label>
+      <label><span>Muntliga uppgifter</span><input type="checkbox" id="setSpeak" ${S.speak !== false ? 'checked' : ''}></label>
+      ${SR ? `<label><span>Svara muntligt</span><select id="setMic" class="remind-sel"><option value="self" ${!micMode() ? 'selected' : ''}>Säg högt själv</option><option value="mic" ${micMode() ? 'selected' : ''}>Med mikrofon</option></select></label>` : ''}
       ${AUDIO_ROOT && 'caches' in window ? `<button class="row-b" id="offAudio">⬇️ Ljud offline <small class="muted" id="offInfo"></small></button>` : ''}
       ${doneLessons().length ? '<button class="row-b" id="listenP">🎧 Lyssna fritt (handsfree)</button>' : ''}
       <button class="row-b" id="words">📚 Mina ord (${wordsLearned()})</button>
@@ -1017,7 +1034,8 @@ function renderProfile() {
   const sa = $('#setAmb'); if (sa) sa.onchange = e => { S.amb = e.target.checked; save(); if (!S.amb) setAmbience(null); };
   const sp = $('#setPush'); if (sp) sp.onchange = async e => { if (e.target.checked) { if (!(await enablePush())) e.target.checked = false; } else await disablePush(); renderProfile(); };
   const sh = $('#setHour'); if (sh) sh.onchange = e => { S.remindHour = +e.target.value; save(); toast(`🔔 Påminnelse kl. ${pad(S.remindHour)}:00 de dagar du inte har övat`); };
-  $('#setSpeak').onchange = e => { S.speak = e.target.checked; S.speakPausedUntil = 0; S.speakBroken = false; save(); };
+  $('#setSpeak').onchange = e => { S.speak = e.target.checked; S.speakPausedUntil = 0; save(); };
+  const sm = $('#setMic'); if (sm) sm.onchange = e => { S.speakMode = e.target.value; S.speakBroken = false; save(); };
   $('#editP').onclick = () => renderOnboard(true);
   $('#words').onclick = wordList;
   const lp = $('#listenP'); if (lp) lp.onclick = () => startListen();
@@ -1182,6 +1200,7 @@ function lessonExercises(u, l) {
   if (Ss[5]) body.push(mkTiles(Ss[5], lvl % 2 ? 'fr' : 'sv', spool, u));
   body.push(mkSpeak(rnd(le.sentences), spool, u));
   body.push(mkMC(rnd(W), wpool, true));
+  if (SCENES[le.id] && AUDIO_ROOT) tail.unshift({ type: 'scene', id: le.id, sc: SCENES[le.id], u });
   if (le.story) le.story.questions.forEach((q, qi) => tail.push({ type: 'dialogue', story: le.story, q, u, showAll: qi > 0 }));
   return [...head, ...shuffle(body), ...tail];
 }
@@ -1279,6 +1298,41 @@ function startVerbs() {
   });
   startSession({ kind: 'practice', verb: true, queue });
 }
+// ================= Lyssna och svara / Radio / Hörövning =================
+const sceneUrl = (id, i) => `${AUDIO_ROOT}ls/${id}-${i}.mp3`;
+let sceneTok = 0;
+function playScene(id, lines, onDone) {
+  const tok = ++sceneTok; stopAudio();
+  const step = i => {
+    if (tok !== sceneTok) return;
+    if (i >= lines.length) { onDone?.(); return; }
+    $$('.sc-av').forEach((a, k) => a.classList.toggle('talk', k === i));
+    playNorm(phraseAudio || (phraseAudio = new Audio()), sceneUrl(id, i), { onend: () => setTimeout(() => step(i + 1), 280), onfail: () => setTimeout(() => step(i + 1), 100) });
+  };
+  step(0);
+}
+const sceneWho = (w, u) => w === 'c' ? COURSE[u].character : null;
+const sceneIcon = w => ({ n: '🎙️', f: '👩', m: '👨', l: '👧', u: '👦', h: '📻', w: '🌦️', ad: '📣' })[w] || '🗣️';
+function radioSheet(u) {
+  const un = COURSE[u], r = RADIO[un.id];
+  if (!unitDone(u)) { sheet(`<div class="big-emoji">📻</div><h2>Radio Port-Saint-Clément</h2><p>Programmet om ${esc(un.fr)} sänds när du har klarat alla lektioner i kvarteret.</p><button class="btn primary" data-close>OK</button>`); return; }
+  sheet(`<div class="big-emoji">📻</div><h2>${esc(r.title)}</h2><p class="muted">Radio Port-Saint-Clément · ${esc(un.fr)}. Lyssna på programmet och svara på tre frågor. Texten visas efteråt.</p>
+    <button class="btn primary" id="rgo">▶ Slå på radion</button><button class="btn ghost" data-close>Stäng</button>`,
+    (w, close) => $('#rgo', w).onclick = () => { close(); startRadio(u); });
+}
+function startRadio(u) {
+  const un = COURSE[u], r = RADIO[un.id], id = 'r-' + un.id;
+  const sc = { lines: r.lines, ic: '📻', radio: true };
+  startSession({ kind: 'practice', radio: un.id, u, queue: r.qs.map((q, qi) => ({ type: 'scene', id, sc: { ...sc, q }, u, qi, last: qi === r.qs.length - 1 })) });
+}
+function startEar() {
+  const done = doneLessons();
+  const ids = done.map(d => ({ id: d.le.id, u: d.u })).filter(x => SCENES[x.id]);
+  const scenes = pickN(ids, Math.min(3, ids.length)).map(x => ({ type: 'scene', id: x.id, sc: SCENES[x.id], u: x.u }));
+  const pairs = pickN(PAIRS, 7).map(p => ({ type: 'pair', p, k: Math.random() < 0.5 ? 0 : 1 }));
+  startSession({ kind: 'practice', ear: true, queue: shuffle([...pairs, ...scenes]) });
+}
+
 function startTest(u) {
   startSession({ kind: 'test', u, queue: mixedExercises([...Array(u).keys()], 12), lives: 3 });
 }
@@ -1342,9 +1396,10 @@ function showFeedback(r) {
   if (r.ok) { L.done++; L.combo++; L.maxCombo = Math.max(L.maxCombo, L.combo); }
   else {
     L.mistakes++; L.combo = 0;
-    if (L.kind === 'lesson') loseHeart();
+    if (L.kind === 'lesson' && !r.self) loseHeart();
     if (L.kind === 'test') L.lives--;
-    if (L.kind !== 'test' && !L.requeued.has(L.i)) { L.requeued.add(L.queue.length); L.queue.push(ex); }
+    if (r.self) L.done++;
+    else if (L.kind !== 'test' && !L.requeued.has(L.i)) { L.requeued.add(L.queue.length); L.queue.push(ex); }
     else if (L.kind !== 'test') L.done++; // räkna ändå fram efter andra försöket
     if (L.kind === 'test') L.done++;
   }
@@ -1412,7 +1467,7 @@ function finish(completed) {
   } else if (L.kind === 'practice') {
     xp = L.review ? 10 : 5; ecus = L.review ? 5 : 2; if (S.hearts < HEART_MAX) { S.hearts++; extra = '<p class="unlock">❤️ Du fick tillbaka ett hjärta!</p>'; }
     if (L.dict || L.verb) { xp = 10; ecus = 5; }
-    title = L.review ? 'Révision terminée !' : L.dict ? 'Dictée terminée !' : L.verb ? 'Conjugaison terminée !' : 'Bien joué !';
+    title = L.review ? 'Révision terminée !' : L.radio ? 'Émission terminée !' : L.ear ? 'Bien entendu !' : L.dict ? 'Dictée terminée !' : L.verb ? 'Conjugaison terminée !' : 'Bien joué !';
     if (L.verb && L.mistakes === 0) extra += '<p class="unlock">🔤 Alla verbformer rätt!</p>';
     if (L.review) { const left = dueItems().length; extra += left ? `<p class="muted">${left} kvar att repetera i dag.</p>` : '<p class="unlock">🧠 Allt repeterat för i dag!</p>'; }
   } else if (L.kind === 'role') {
@@ -1615,6 +1670,12 @@ function storyQuestion(q) {
 function storySpeak(ln) {
   const nb = $('#snext'); nb.disabled = true; nb.textContent = 'Säg repliken';
   const box = $('#sq');
+  if (!micMode()) {
+    box.innerHTML = `<div class="sq card"><p class="kind">Din tur</p><h3>Säg repliken högt: <span class="sv-q">”${esc(first(ln.sv))}”</span></h3><p class="muted small">Försök säga den på franska. Tryck sedan och jämför.</p></div>`;
+    selfSay($('.sq', box), { fr: ln.fr, play: () => playLine(L.st, L.st.lines.indexOf(ln)), grade: false, onDone: () => { nb.disabled = false; nb.textContent = 'Klart ▶'; } });
+    box.scrollIntoView({ block: 'end', behavior: 'smooth' });
+    return;
+  }
   box.innerHTML = `<div class="sq card"><p class="kind">Din tur</p><h3>Säg repliken högt</h3>
     <div class="bubble"><button class="say-b" id="sayRec">🔊</button><span class="fr-t">${esc(ln.fr)}</span></div>
     <button class="mic" id="mic">🎙️<span>Tryck och prata</span></button><p class="heard muted" id="heard"></p>
@@ -1639,6 +1700,20 @@ function storySpeak(ln) {
       rec.onend = () => $('#mic', box)?.classList.remove('rec');
       rec.start();
     } catch { done(); }
+  };
+}
+
+// "Säg högt själv": man säger repliken, trycker, hör inspelningen och bedömer själv
+function selfSay(box, { fr, play, onDone, grade = true }) {
+  box.insertAdjacentHTML('beforeend', `<div class="self-say"><button class="btn primary" id="saidB">🗣️ Jag har sagt det – visa och lyssna</button></div>`);
+  $('#saidB', box).onclick = () => {
+    const w = $('.self-say', box);
+    w.innerHTML = `<div class="self-ans"><button class="say-b" id="ssPlay">🔊</button><span class="fr-t">${esc(fr)}</span></div>
+      ${grade ? `<p class="muted small">Lät det likadant?</p><div class="self-g"><button class="btn" data-g="1">👍 Ja</button><button class="btn ghost" data-g="0">🔁 Inte riktigt</button></div>` : ''}`;
+    const pl = () => play ? play() : say(fr); pl();
+    $('#ssPlay', w).onclick = pl;
+    if (!grade) return onDone(true);
+    $$('[data-g]', w).forEach(b => b.onclick = () => { $$('[data-g]', w).forEach(x => x.disabled = true); onDone(b.dataset.g === '1'); });
   };
 }
 
@@ -1765,6 +1840,43 @@ const EX = {
       return { ...g, answer: ex.s.fr, say: ex.s.fr, meaning: first(ex.s.sv), diff: g.ok && !g.note ? '' : diffHtml(inp.value, ex.s.fr) };
     };
   },
+  scene(ex, root) {
+    const sc = ex.sc, q = sc.q, lvlA = COURSE[ex.u].level.startsWith('A');
+    const opts = ex.opts || (ex.opts = shuffle(q.o.map((o, i) => [o, i])));
+    const avs = sc.lines.map(([w]) => { const ch = sceneWho(w, ex.u); return `<span class="sc-av">${ch ? ART.character(ch) : `<b>${sceneIcon(w)}</b>`}</span>`; }).join('');
+    root.innerHTML = `<p class="kind">${sc.radio ? `📻 Radio · fråga ${ex.qi + 1} av ${sc.radio ? RADIO[COURSE[ex.u].id].qs.length : 1}` : `${sc.ic || '🎧'} Lyssna och svara`}</p>
+      <div class="sc-box"><div class="sc-avs">${avs}</div><button class="btn sc-play" id="scPlay">🔊 Lyssna ${ex.played ? 'igen' : ''}</button>
+      <p class="muted small">${lvlA ? 'Lyssna på hela scenen. Texten visas när du har svarat.' : 'Écoutez la scène. Le texte apparaîtra après votre réponse.'}</p></div>
+      <h2 class="q">${esc(q.q)}</h2>
+      <div class="opts">${opts.map(([o, i], k) => `<button class="opt" data-i="${i}"><span class="num">${k + 1}</span>${esc(o)}</button>`).join('')}</div>
+      <div id="scTx"></div>`;
+    const play = () => { ex.played = true; $('#scPlay', root).textContent = '🔊 Lyssna igen'; playScene(ex.id, sc.lines); };
+    $('#scPlay', root).onclick = play;
+    if (!ex.played && (ex.qi || 0) === 0) setTimeout(() => L && L.queue[L.i] === ex && play(), 450);
+    let sel = null;
+    $$('.opt', root).forEach(b => b.onclick = () => { if (L.checked) return; sel = +b.dataset.i; $$('.opt', root).forEach(x => x.classList.toggle('sel', x === b)); setReady(true); });
+    cur.check = () => {
+      sceneTok++;
+      $$('.opt', root).forEach(x => { x.disabled = true; if (+x.dataset.i === 0) x.classList.add('right'); else if (+x.dataset.i === sel) x.classList.add('wrongo'); });
+      if (!sc.radio || ex.last) {
+        $('#scTx', root).innerHTML = `<div class="sc-tx"><p class="kind">Texten</p>${sc.lines.map(([w, fr, sv], i) => `<button class="sc-line" data-i="${i}"><span class="sc-w">${sceneWho(w, ex.u) ? '' : sceneIcon(w)}</span><span><span class="fr-t">${esc(fr)}</span><span class="dl-sv">${esc(sv)}</span></span></button>`).join('')}</div>`;
+        $$('.sc-line', root).forEach(b => b.onclick = () => playNorm(phraseAudio || (phraseAudio = new Audio()), sceneUrl(ex.id, +b.dataset.i)));
+      }
+      if (sc.radio && ex.last) { S.radio = S.radio || {}; S.radio[sc.radio === true ? COURSE[ex.u].id : sc.radio] = 1; }
+      return { ok: sel === 0, answer: q.o[0] };
+    };
+  },
+  pair(ex, root) {
+    const [a, b, sa, sb] = ex.p, word = ex.p[ex.k];
+    root.innerHTML = `<p class="kind">👂 Vad hörde du?</p><h2 class="q">Lyssna noga – vilket ord?</h2>
+      <button class="btn sc-play" id="prPlay">🔊 Lyssna</button>
+      <div class="opts pair-o">${[[a, sa, 0], [b, sb, 1]].map(([w, s, k]) => `<button class="opt" data-k="${k}"><b>${esc(w)}</b><small class="muted">${esc(s)}</small></button>`).join('')}</div>`;
+    const play = () => say(word);
+    $('#prPlay', root).onclick = play; setTimeout(() => L && L.queue[L.i] === ex && play(), 350);
+    let sel = null;
+    $$('.opt', root).forEach(x => x.onclick = () => { if (L.checked) return; sel = +x.dataset.k; $$('.opt', root).forEach(y => y.classList.toggle('sel', y === x)); setReady(true); });
+    cur.check = () => ({ ok: sel === ex.k, answer: `${word} (${ex.p[ex.k + 2]})`, say: word });
+  },
   verbTable(ex, root) {
     const t = TENSES.find(x => x.id === ex.t);
     root.innerHTML = `<p class="kind">Nytt verb · ${esc(t.fr)}</p><h2 class="q"><span class="verb-inf">${esc(ex.vb.v)}</span> <small class="muted">(${esc(ex.vb.sv)})</small></h2>
@@ -1810,6 +1922,17 @@ const EX = {
     }
   },
   speak(ex, root) {
+    if (!micMode()) {
+      // Har man byggt meningen förut: säg den på franska utifrån svenskan. Annars: läs högt och jämför uttalet.
+      const prod = !!(S.built || {})[builtKey({ to: 'fr', s: ex.s })];
+      root.innerHTML = prod
+        ? `<p class="kind">Säg på franska</p><h2 class="q">${esc(first(ex.s.sv))}</h2><p class="muted small">Säg meningen högt för dig själv. Tryck sedan och jämför.</p>`
+        : `<p class="kind">Uttal</p><h2 class="q">Säg meningen högt</h2>${npc(ex.u, `${speakerBtns(ex.s.fr)}<span class="fr-t">${esc(ex.s.fr)}</span>`)}<p class="muted small">Lyssna gärna först. Säg den sedan högt och jämför.</p>`;
+      bindSay(root);
+      selfSay(root, { fr: ex.s.fr, onDone: ok => { cur.check = () => ({ ok, self: true, answer: ex.s.fr, say: ex.s.fr, note: ok ? '' : 'Säg den en gång till medan du lyssnar.' }); setReady(true); onCheck(); } });
+      cur.check = () => ({ ok: true, self: true });
+      return;
+    }
     root.innerHTML = `<p class="kind">Uttal</p><h2 class="q">Säg meningen högt</h2>
       ${npc(ex.u, `${speakerBtns(ex.s.fr)}<span class="fr-t">${esc(ex.s.fr)}</span>`)}
       <button class="mic" id="mic">🎙️<span>Tryck och prata</span></button><p class="heard muted" id="heard"></p>
@@ -2048,15 +2171,15 @@ function rolePrompt(idx) {
   const box = $('#sq');
   box.innerHTML = `<div class="sq card role-q"><p class="kind">Din tur</p><h3>Säg på franska: <span class="sv-q">”${esc(first(ln.sv))}”</span></h3>
     <div class="opts">${opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="num">${i + 1}</span>${esc(o)}</button>`).join('')}</div>
-    ${canSpeak() ? `<button class="mic sm" id="rmic">🎙️<span>Säg den högt i stället</span></button><p class="heard muted" id="heard"></p>` : ''}
+    ${canSpeak() && micMode() ? `<button class="mic sm" id="rmic">🎙️<span>Säg den högt i stället</span></button><p class="heard muted" id="heard"></p>` : canSpeak() ? `<button class="link" id="rself">🗣️ Säg den högt i stället</button>` : ''}
     <div class="sq-fb"></div></div>`;
   box.scrollIntoView({ block: 'end', behavior: 'smooth' });
-  const done = ok => {
+  const done = (ok, heard) => {
     if (L.q === 'done') return; L.q = 'done';
     chime(ok);
     if (ok && tries === 0) { L.combo++; L.maxCombo = Math.max(L.maxCombo, L.combo); } else { L.mistakes++; L.combo = 0; }
     trackAnswer({ s: ln }, ok && tries === 0);
-    setTimeout(() => { box.innerHTML = ''; roleRow(st, idx, true); L.q = null; playLine(st, idx, () => setTimeout(() => L?.st === st && roleNext(), 350)); }, ok ? 450 : 1300);
+    setTimeout(() => { box.innerHTML = ''; roleRow(st, idx, true); L.q = null; if (heard) setTimeout(() => L?.st === st && roleNext(), 350); else playLine(st, idx, () => setTimeout(() => L?.st === st && roleNext(), 350)); }, heard ? 300 : ok ? 450 : 1300);
   };
   L.q = 'open';
   $$('.opt', box).forEach(b => b.onclick = () => {
@@ -2067,6 +2190,13 @@ function rolePrompt(idx) {
     else $('.sq-fb', box).innerHTML = `<b class="okc">✓ ${rnd(PRAISE)}</b>`;
     done(ok);
   });
+  const rs = $('#rself', box);
+  if (rs) rs.onclick = () => {
+    if (L.q !== 'open') return;
+    $('.opts', box).remove(); rs.remove();
+    $('.sq-fb', box).innerHTML = '<span class="muted small">Säg repliken högt på franska. Tryck sedan och jämför.</span>';
+    selfSay($('.role-q', box) || box, { fr: ln.fr, play: () => playLine(st, idx), onDone: ok => { if (!ok) tries++; done(ok, true); } });
+  };
   const mic = $('#rmic', box);
   if (mic) mic.onclick = () => {
     if (L.q !== 'open') return;
@@ -2239,4 +2369,4 @@ if ('serviceWorker' in navigator) window.addEventListener('load', () => navigato
 boot();
 
 // För test
-window.__psc = { get S() { return S; }, get L() { return L; }, get wa() { return { st: actx?.state, playing: !!curSrc, n: bufCache.size }; }, say: (t, o) => say(t, false, o || {}), get amb() { return ambCur?.id || null; }, get LM() { return LM; }, COURSE, STORIES, renderEx: () => renderEx(), finish: c => finish(c), showStreak: s => showStreak(s), conjCheck: (e, o) => conj(e.vb, e.t, e.i).includes(o), conjAns: e => conj(e.vb, e.t, e.i)[0] };
+window.__psc = { get S() { return S; }, get L() { return L; }, get wa() { return { st: actx?.state, playing: !!curSrc, n: bufCache.size }; }, say: (t, o) => say(t, false, o || {}), get amb() { return ambCur?.id || null; }, get LM() { return LM; }, COURSE, STORIES, renderEx: () => renderEx(), finish: c => finish(c), showStreak: s => showStreak(s), conjCheck: (e, o) => conj(e.vb, e.t, e.i).includes(o), conjAns: e => conj(e.vb, e.t, e.i)[0], startRadio: u => startRadio(u), startEar: () => startEar(), startLesson: (u, l) => startLesson(u, l) };
