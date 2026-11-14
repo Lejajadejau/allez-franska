@@ -66,3 +66,17 @@ select cron.schedule('allez-paminnelser', '0 * * * *', $$
     body := '{"type":"cron"}'::jsonb
   );
 $$);
+
+-- Felrapporter från appen (anonyma). Alla får skicka, ingen kan läsa via appen.
+create table if not exists public.app_errors (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  ver text check (char_length(ver) <= 40),
+  msg text check (char_length(msg) <= 500),
+  stack text check (char_length(stack) <= 2000),
+  place text check (char_length(place) <= 200),
+  ua text check (char_length(ua) <= 300)
+);
+alter table public.app_errors enable row level security;
+drop policy if exists "skicka felrapport" on public.app_errors;
+create policy "skicka felrapport" on public.app_errors for insert to anon, authenticated with check (true);

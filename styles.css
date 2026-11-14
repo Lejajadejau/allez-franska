@@ -632,3 +632,13 @@ body[data-tod="night"] .scene svg .lamp-glow { filter: blur(2px); }
 .ansline .tile, .bank .tile { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .tile.ghost { display: inline-block; background: transparent; color: transparent; border: 2px dashed var(--line); box-shadow: none; }
 .tile.float { position: fixed; z-index: 1000; pointer-events: none; margin: 0; transform: scale(1.07) rotate(-2deg); box-shadow: 0 10px 22px rgba(60,40,20,.22); }
+/* Fortsätt där du var */
+.resume-c { display: flex; align-items: center; gap: 10px; border-color: var(--blue, #3b6fb6); }
+.resume-c > div { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+/* Ny version */
+.upd-bar { position: fixed; left: 12px; right: 12px; top: calc(10px + env(safe-area-inset-top)); z-index: 900; padding: 14px 16px; border-radius: 16px;
+  border: 0; background: var(--blue); color: #fff; font-weight: 700; font-size: 1rem; box-shadow: 0 6px 20px rgba(40,30,20,.28); animation: updIn .35s ease-out; }
+@keyframes updIn { from { transform: translateY(-40px); opacity: 0; } }
+/* Puffa kompis */
+.bd-pf { border: 2px solid var(--line); background: #fff; border-radius: 12px; padding: 5px 9px; font-weight: 700; font-size: .85rem; white-space: nowrap; box-shadow: 0 2px 0 var(--line); }
+.bd-pf.done { border-color: transparent; box-shadow: none; background: none; color: var(--green-d); }

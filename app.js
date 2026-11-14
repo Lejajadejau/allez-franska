@@ -657,6 +657,7 @@ window.addEventListener('resize', () => { if ($('.road')) drawRoads(); });
 function renderHome() {
   const cur = currentNode();
   let html = `<section class="banner">${ART.skyline()}<div class="banner-t"><h1>Port-Saint-Clément</h1><p>Franska för familj och vänner</p></div></section>`;
+  html += resumeCard();
   html += nextCard(cur);
   if (sb && userId !== 'local') html += `<div class="buddy card loading-c" id="buddyBox"><div class="bd-head"><b>👯 Kompissvit</b></div></div>`;
   const pct = Math.min(100, Math.round(S.dayXp / S.dailyGoal * 100));
@@ -735,6 +736,8 @@ function renderHome() {
   const eb = $('#earB'); if (eb) eb.onclick = () => startEar();
   const sc = $('#serialB'); if (sc) sc.onclick = () => serialSheet();
   const rv = $('#reviewB'); if (rv) rv.onclick = startReview;
+  const rb = $('#resumeB'); if (rb) rb.onclick = resumeLesson;
+  const rx = $('#resumeX'); if (rx) rx.onclick = () => { clearResume(); rx.closest('.resume-c')?.remove(); };
   const ng = $('#nextGo'); if (ng) ng.onclick = () => ng.dataset.practice ? startPractice() : nodeSheet(cur[0], cur[1]);
   const ns = $('#nextShow'); if (ns) ns.onclick = () => { const el = $('.node.cur'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
   drawRoads();
@@ -777,8 +780,10 @@ async function fillBuddyCard() {
     if (mine.has(p.id) && theirs.includes(userId)) {
       const bs = buddyStreak(S.days, p.state.days);
       const status = bs.me && bs.them ? '✓ Båda klara i dag' : bs.them ? `${esc(p.name)} har gjort sin – din tur!` : bs.me ? `Väntar på ${esc(p.name)}` : 'Ingen av er har övat i dag';
+      const nudged = (S.nudged || {})[p.id] === dayKey();
+      const nudge = bs.them ? '' : nudged ? '<span class="bd-pf done">Puffad ✓</span>' : `<button class="bd-pf" data-nudge="${p.id}" data-name="${esc(p.name)}" data-n="${bs.n}">👉 Puffa</button>`;
       rows.push(`<div class="bd-row ${bs.me && bs.them ? 'ok' : bs.them ? 'turn' : ''}"><span class="av">${esc(S.avatar)}</span><span class="av b2">${esc(p.avatar)}</span>
-        <div class="bd-t"><b>Du & ${esc(p.name)}</b><span>${status}</span></div><span class="bd-n">🔥 ${bs.n}</span></div>`);
+        <div class="bd-t"><b>Du & ${esc(p.name)}</b><span>${status}</span></div>${nudge}<span class="bd-n">🔥 ${bs.n}</span></div>`);
     } else if (mine.has(p.id)) {
       rows.push(`<div class="bd-row wait"><span class="av b2">${esc(p.avatar)}</span><div class="bd-t"><b>${esc(p.name)}</b><span>Väntar på att ${esc(p.name)} lägger till dig</span></div><button class="bd-x" data-rm="${p.id}" aria-label="Ta bort">✕</button></div>`);
     } else if (theirs.includes(userId)) {
@@ -789,8 +794,23 @@ async function fillBuddyCard() {
     ${rows.length ? rows.join('') : '<p class="muted">Välj någon i familjen. Sviten växer de dagar ni båda gör en lektion.</p>'}`;
   box.classList.remove('loading-c');
   $$('[data-add]', box).forEach(b => b.onclick = () => addBuddy(b.dataset.add));
+  $$('[data-nudge]', box).forEach(b => b.onclick = () => nudgeBuddy(b.dataset.nudge, b.dataset.name, +b.dataset.n, b));
   $$('[data-rm]', box).forEach(b => b.onclick = () => { S.buddies = S.buddies.filter(x => x !== b.dataset.rm); save(); fillBuddyCard(); });
   const add = $('#bdAdd', box); if (add) add.onclick = () => buddySheet(others);
+}
+// Puff: en knuff till en kompis som inte har övat i dag (en gång per dag och kompis)
+async function nudgeBuddy(id, name, n, btn) {
+  if (!sb || userId === 'local') return;
+  const today = dayKey(); S.nudged = S.nudged || {};
+  if (S.nudged[id] === today) { toast(`Du har redan puffat ${name} i dag`); return; }
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  const message = n > 0 ? `Dags för dagens lektion! Vår kompissvit på ${n} ${n === 1 ? 'dag' : 'dagar'} hänger på dig 🔥` : 'Dags för dagens lektion! Gör en så startar vår kompissvit 🔥';
+  const { error } = await sb.from('cheers').insert({ from_id: userId, to_id: id, emoji: '👉', message });
+  if (error) { toast('Det gick inte att puffa just nu'); if (btn) { btn.disabled = false; btn.textContent = '👉 Puffa'; } return; }
+  S.nudged = Object.fromEntries(Object.entries(S.nudged).filter(([, d]) => d === today)); S.nudged[id] = today; save(); buzz(30);
+  toast(`👉 ${name} har fått en puff!`);
+  sb.functions.invoke('push', { body: { type: 'cheer', to: id } }).catch(() => { });
+  if (btn) btn.outerHTML = '<span class="bd-pf done">Puffad ✓</span>';
 }
 function addBuddy(id) {
   S.buddies = [...new Set([...(S.buddies || []), id])].slice(0, 3); save(); buzz(30); fillBuddyCard();
@@ -1369,7 +1389,7 @@ function startSession(o) {
 function quitLesson() {
   sheet(`<div class="welcome">${ART.character('brioche', 'sad')}</div><h2>Vill du verkligen sluta?</h2><p>Du förlorar framstegen i den här lektionen.</p>
     <button class="btn primary" data-close>Fortsätt lära</button><button class="btn ghost" id="q">Avsluta</button>`,
-    (w, close) => $('#q', w).onclick = () => { close(); speechSynthesis?.cancel(); stopAudio(); setAmbience(null); L = null; save(); go('home'); });
+    (w, close) => $('#q', w).onclick = () => { close(); speechSynthesis?.cancel(); stopAudio(); setAmbience(null); L = null; clearResume(); save(); go('home'); });
 }
 function livesHtml() {
   if (L.kind === 'test') return `<div class="lh">${'💛'.repeat(Math.max(0, L.lives))}${'🤍'.repeat(3 - Math.max(0, L.lives))}</div>`;
@@ -1384,8 +1404,35 @@ function tilesFirst(ex) {
   if (ex.type === 'listenType' && !ex.dict && !(S.built || {})[builtKey(ex, true)]) return { ...mkListenTiles(ex.s, sentencePool([ex.u ?? 0]), ex.u), first: true };
   return ex;
 }
+const RESUME_KEY = 'allez-resume';
+function saveResume() {
+  if (!L || !['lesson', 'practice', 'test'].includes(L.kind)) return;
+  try { localStorage.setItem(RESUME_KEY, JSON.stringify({ t: Date.now(), crumb: crumbText(), L: { ...L, requeued: [...(L.requeued || [])] } })); } catch { }
+}
+function clearResume() { try { localStorage.removeItem(RESUME_KEY); } catch { } }
+function getResume() {
+  try {
+    const r = JSON.parse(localStorage.getItem(RESUME_KEY) || 'null');
+    if (!r || !r.L || Date.now() - r.t > 24 * 3600e3 || r.L.i >= r.L.queue.length) return null;
+    if (r.L.kind === 'lesson' && !lessonAt(r.L.u, r.L.l)) return null;
+    return r;
+  } catch { return null; }
+}
+function resumeLesson() {
+  const r = getResume(); if (!r) { clearResume(); go('home'); return; }
+  setAmbience(null);
+  L = { ...r.L, requeued: new Set(r.L.requeued || []), checked: false, over: false };
+  renderEx();
+}
+function resumeCard() {
+  if (L) return '';
+  const r = getResume(); if (!r) return '';
+  return `<div class="card resume-c"><div><b>▶ Fortsätt där du var</b><span class="muted small">${esc(r.crumb || '')} · uppgift ${Math.min(r.L.done + 1, r.L.total)} av ${r.L.total}</span></div>
+    <button class="btn small primary" id="resumeB">Fortsätt</button><button class="bd-x" id="resumeX" aria-label="Släng">✕</button></div>`;
+}
 function renderEx() {
   stopRec();
+  saveResume();
   L.queue[L.i] = tilesFirst(L.queue[L.i]);
   const ex = L.queue[L.i];
   L.checked = false;
@@ -1442,7 +1489,7 @@ function showFeedback(r) {
   $('.ltop .lh').outerHTML = livesHtml();
   $('.ltop .pbar i').style.width = Math.round(L.done / L.total * 100) + '%';
   save(false);
-  if (L.kind === 'lesson' && S.hearts <= 0 && !r.ok) { L.over = true; btn.disabled = true; setTimeout(outOfHearts, 700); return; }
+  if (L.kind === 'lesson' && S.hearts <= 0 && !r.ok) { L.over = true; clearResume(); btn.disabled = true; setTimeout(outOfHearts, 700); return; }
   if (L.kind === 'test' && L.lives < 0) { L.over = true; btn.disabled = true; setTimeout(() => finish(false), 700); return; }
 }
 function next() {
@@ -1464,6 +1511,7 @@ function outOfHearts() {
 }
 
 function finish(completed) {
+  clearResume();
   setAmbience(null);
   const secs = Math.round((Date.now() - L.start) / 1000);
   const acc = Math.round(100 * Math.max(0, L.total - L.mistakes) / L.total);
@@ -2017,7 +2065,9 @@ const EX = {
       try {
         rec = newRec(); rec.lang = 'fr-FR'; rec.interimResults = false; rec.maxAlternatives = 3;
         $('#mic', root).classList.add('rec'); $('#mic span', root).textContent = 'Lyssnar…';
+        let heard = false, failed = false;
         rec.onresult = e => {
+          heard = true; L.micMiss = 0;
           const alts = [...e.results[0]].map(a => a.transcript);
           let best = 0, bestT = alts[0];
           for (const t of alts) { const said = new Set(norm(t, false).split(' ')); const hit = target.filter(w => said.has(w)).length / target.length; if (hit > best) { best = hit; bestT = t; } }
@@ -2027,10 +2077,18 @@ const EX = {
           setTimeout(onCheck, 400);
         };
         rec.onerror = e => {
-          if (['not-allowed', 'service-not-allowed', 'language-not-supported', 'audio-capture'].includes(e.error)) { micBroken(ex, e.error); return; }
+          if (['not-allowed', 'service-not-allowed', 'language-not-supported', 'audio-capture'].includes(e.error)) { failed = true; micBroken(ex, e.error); return; }
+          if (e.error === 'aborted') { failed = true; return; }
           $('#heard', root).textContent = e.error === 'network' ? 'Taligenkänningen behöver internet – försök igen.' : 'Jag hörde inget – försök igen.';
         };
-        rec.onend = () => { $('#mic', root)?.classList.remove('rec'); const s = $('#mic span', root); if (s) s.textContent = 'Tryck och prata'; };
+        rec.onend = () => {
+          $('#mic', root)?.classList.remove('rec'); const s = $('#mic span', root); if (s) s.textContent = 'Tryck och prata';
+          if (heard || failed || !L || L.checked) return;
+          // Hör mikrofonen inget två gånger i rad byter appen till "Säg högt själv"
+          L.micMiss = (L.micMiss || 0) + 1;
+          if (L.micMiss >= 2) { L.micMiss = 0; S.speakMode = 'self'; save(false); renderEx(); toast('Mikrofonen hörde inget – säg meningen högt själv i stället. Du kan byta tillbaka i Profil.'); }
+          else if ($('#heard', root) && !$('#heard', root).textContent) $('#heard', root).textContent = 'Jag hörde inget – försök igen.';
+        };
         rec.start();
       } catch { micBroken(ex, 'start'); }
     };
@@ -2427,6 +2485,44 @@ function quitListen() {
 }
 
 // ================= Start =================
+// ================= Ny version =================
+// Appen frågar efter senaste version när den öppnas igen och visar en knapp om en ny finns
+let bootVer = null, updShown = false;
+async function swVersion() { try { const t = await (await fetch('sw.js?v=' + Date.now(), { cache: 'no-store' })).text(); return (t.match(/CACHE = '([^']+)'/) || [])[1] || null; } catch { return null; } }
+async function checkUpdate() {
+  if (updShown || navigator.onLine === false) return;
+  const v = await swVersion(); if (!v) return;
+  if (!bootVer) { bootVer = v; return; }
+  if (v !== bootVer) showUpdate();
+}
+function showUpdate() {
+  if (updShown) return; updShown = true;
+  const b = document.createElement('button'); b.className = 'upd-bar'; b.textContent = '✨ Ny version av Allez – tryck för att uppdatera';
+  b.onclick = async () => {
+    b.textContent = 'Uppdaterar…';
+    if (L && ['lesson', 'practice', 'test'].includes(L.kind)) { saveResume(); try { sessionStorage.setItem('allez-autoresume', '1'); } catch { } }
+    try { const reg = await navigator.serviceWorker?.getRegistration(); await reg?.update(); } catch { }
+    location.reload();
+  };
+  document.body.appendChild(b);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
+setInterval(checkUpdate, 30 * 60 * 1000);
+
+// ================= Felrapporter =================
+// Anonyma felrapporter (meddelande, var i appen, webbläsare) sparas i Supabase så att fel kan rättas
+const sentErr = new Set();
+function reportError(msg, stack) {
+  try {
+    msg = String(msg || '').slice(0, 500);
+    if (!sb || !msg || sentErr.size >= 5 || sentErr.has(msg) || /^Script error\.?$|ResizeObserver|AbortError|NotAllowedError/.test(msg)) return;
+    sentErr.add(msg);
+    sb.from('app_errors').insert({ ver: bootVer || '', msg, stack: String(stack || '').slice(0, 2000), place: (L ? (L.kind || 'lektion') + ':' + (L.queue?.[L.i]?.type || '') : view || '').slice(0, 200), ua: navigator.userAgent.slice(0, 300) }).then(() => { }, () => { });
+  } catch { }
+}
+window.addEventListener('error', e => reportError(e.message, e.error?.stack || `${e.filename}:${e.lineno}`));
+window.addEventListener('unhandledrejection', e => reportError(e.reason?.message || e.reason, e.reason?.stack));
+
 async function boot() {
   app.innerHTML = `<div class="splash"><h1>Allez !</h1><p>Port-Saint-Clément</p></div>`;
   const remote = await initRemote();
@@ -2435,7 +2531,8 @@ async function boot() {
   load();
   if (sb) await pullRemote();
   if (!S.name) { renderOnboard(); return; }
-  save(); go('home'); refreshPush();
+  save(); go('home'); refreshPush(); checkUpdate();
+  try { if (sessionStorage.getItem('allez-autoresume')) { sessionStorage.removeItem('allez-autoresume'); if (getResume()) resumeLesson(); } } catch { }
   setInterval(() => { if (!L) { const h = S.hearts; tick(); if (h !== S.hearts && view) { const el = $('.stat.hearts b'); if (el) el.textContent = S.hearts; save(false); } } }, 60000);
 }
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
