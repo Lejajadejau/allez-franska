@@ -74,7 +74,10 @@ Deno.serve(async (req) => {
       .gte('created_at', since).order('created_at', { ascending: false }).limit(1);
     if (!ch?.length) return json({ error: 'ingen pepp hittad' }, 404);
     const { data: from } = await sb.from('profiles').select('name').eq('id', user.id).single();
-    const sent = await sendTo(body.to, { title: `${ch[0].emoji} Pepp från ${from?.name || 'en vän'}`, body: ch[0].message, url: './' });
+    const who = from?.name || 'en vän';
+    // 👉 = puff: en påminnelse från en kompis om att öva i dag
+    const title = ch[0].emoji === '👉' ? `👉 Puff från ${who} – påminnelse om att öva i dag` : `${ch[0].emoji} Pepp från ${who}`;
+    const sent = await sendTo(body.to, { title, body: ch[0].message, url: './' });
     return json({ sent });
   }
 

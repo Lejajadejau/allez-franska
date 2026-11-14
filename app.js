@@ -895,7 +895,7 @@ async function checkCheers() {
   const players = await fetchPlayers(); const byId = Object.fromEntries(players.map(p => [p.id, p]));
   sheet(`<h2>Du har fått pepp! 🎉</h2><div class="cheer-list">${list.map(c => {
     const f = byId[c.from_id] || { name: 'Någon', avatar: '🙂' };
-    return `<div class="cheer"><span class="av">${esc(f.avatar)}</span><div><b>${esc(f.name)}</b> skickade ${esc(c.emoji)}<div>${esc(c.message)}</div></div></div>`;
+    return `<div class="cheer"><span class="av">${esc(f.avatar)}</span><div><b>${esc(f.name)}</b> ${c.emoji === '👉' ? 'puffade dig – en påminnelse om att öva i dag 👉' : 'skickade ' + esc(c.emoji)}<div>${esc(c.message)}</div></div></div>`;
   }).join('')}</div><button class="btn primary" data-close>Merci !</button>`);
   await sb.from('cheers').update({ seen: true }).in('id', list.map(c => c.id));
 }
@@ -1010,7 +1010,7 @@ async function renderLeague() {
     const got = await fetchCheers(false);
     if (got.length) {
       const byId = Object.fromEntries(players.map(p => [p.id, p]));
-      html += `<h3 class="sub">Pepp till dig</h3><div class="cheer-list">${got.slice(0, 8).map(c => { const f = byId[c.from_id] || { name: 'Någon', avatar: '🙂' }; return `<div class="cheer"><span class="av">${esc(f.avatar)}</span><div><b>${esc(f.name)}</b> ${esc(c.emoji)}<div class="muted">${esc(c.message)}</div></div></div>`; }).join('')}</div>`;
+      html += `<h3 class="sub">Pepp till dig</h3><div class="cheer-list">${got.slice(0, 8).map(c => { const f = byId[c.from_id] || { name: 'Någon', avatar: '🙂' }; return `<div class="cheer"><span class="av">${esc(f.avatar)}</span><div><b>${esc(f.name)}</b> ${c.emoji === '👉' ? '👉 puffade dig' : esc(c.emoji)}<div class="muted">${esc(c.message)}</div></div></div>`; }).join('')}</div>`;
     }
   }
   if (view !== 'league') return;
