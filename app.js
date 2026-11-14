@@ -9,6 +9,7 @@ import { SERIAL3 } from './serial3.js';
 import { SCENES1 } from './listen1.js';
 import { SCENES2 } from './listen2.js';
 import { SCENES3 } from './listen3.js';
+import { SCENESB } from './listen4.js';
 import { RADIO, PAIRS } from './radio.js';
 const SCENES = { ...SCENES1, ...SCENES2, ...SCENES3 };
 const SEASONS = [SERIAL, SERIAL2, SERIAL3];
@@ -1200,6 +1201,7 @@ function lessonExercises(u, l) {
   if (Ss[5]) body.push(mkTiles(Ss[5], lvl % 2 ? 'fr' : 'sv', spool, u));
   body.push(mkSpeak(rnd(le.sentences), spool, u));
   body.push(mkMC(rnd(W), wpool, true));
+  if (SCENESB[le.id] && AUDIO_ROOT) body.push({ type: 'scene', id: le.id + 'x', sc: SCENESB[le.id], u });
   if (SCENES[le.id] && AUDIO_ROOT) tail.unshift({ type: 'scene', id: le.id, sc: SCENES[le.id], u });
   if (le.story) le.story.questions.forEach((q, qi) => tail.push({ type: 'dialogue', story: le.story, q, u, showAll: qi > 0 }));
   return [...head, ...shuffle(body), ...tail];
@@ -1327,8 +1329,8 @@ function startRadio(u) {
 }
 function startEar() {
   const done = doneLessons();
-  const ids = done.map(d => ({ id: d.le.id, u: d.u })).filter(x => SCENES[x.id]);
-  const scenes = pickN(ids, Math.min(3, ids.length)).map(x => ({ type: 'scene', id: x.id, sc: SCENES[x.id], u: x.u }));
+  const ids = done.flatMap(d => [SCENES[d.le.id] && { id: d.le.id, sc: SCENES[d.le.id], u: d.u }, SCENESB[d.le.id] && { id: d.le.id + 'x', sc: SCENESB[d.le.id], u: d.u }]).filter(Boolean);
+  const scenes = pickN(ids, Math.min(3, ids.length)).map(x => ({ type: 'scene', id: x.id, sc: x.sc, u: x.u }));
   const pairs = pickN(PAIRS, 7).map(p => ({ type: 'pair', p, k: Math.random() < 0.5 ? 0 : 1 }));
   startSession({ kind: 'practice', ear: true, queue: shuffle([...pairs, ...scenes]) });
 }
