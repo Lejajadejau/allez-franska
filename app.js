@@ -1806,15 +1806,61 @@ const EX = {
     root.insertAdjacentHTML('beforeend', `<div class="ansline" id="ans"></div><div class="bank" id="bank">${ex.tiles.map((t, i) => `<button class="tile" data-i="${i}">${esc(t)}</button>`).join('')}</div>`);
     bindSay(root);
     const chosen = [];
-    const draw = () => {
-      $('#ans', root).innerHTML = chosen.map(i => `<button class="tile" data-i="${i}">${esc(ex.tiles[i])}</button>`).join('');
-      $$('#bank .tile', root).forEach(b => b.classList.toggle('used', chosen.includes(+b.dataset.i)));
-      $$('#ans .tile', root).forEach(b => b.onclick = () => { if (L.checked) return; chosen.splice(chosen.indexOf(+b.dataset.i), 1); draw(); });
+    let suppress = 0;
+    const draw = (prev) => {
+      const list = prev ? prev.list : chosen;
+      $('#ans', root).innerHTML = list.map(i => i === 'G' ? `<span class="tile ghost">${esc(ex.tiles[prev.i])}</span>` : `<button class="tile" data-i="${i}">${esc(ex.tiles[i])}</button>`).join('');
+      $$('#bank .tile', root).forEach(b => b.classList.toggle('used', chosen.includes(+b.dataset.i) || (!!prev && prev.i === +b.dataset.i)));
+      $$('#ans .tile[data-i]', root).forEach(b => b.onclick = () => { if (L.checked || Date.now() < suppress) return; chosen.splice(chosen.indexOf(+b.dataset.i), 1); draw(); });
       setReady(chosen.length > 0);
     };
     $$('#bank .tile', root).forEach(b => b.onclick = () => {
-      if (L.checked || b.classList.contains('used')) return;
+      if (L.checked || Date.now() < suppress || b.classList.contains('used')) return;
       chosen.push(+b.dataset.i); draw();
+    });
+    // Dra brickor: flytta om i svaret, dra upp från banken till rätt plats, eller dra ut ur svaret för att ta bort
+    const ansIndexAt = (x, y) => {
+      const ts = $$('#ans .tile[data-i]', root);
+      for (let k = 0; k < ts.length; k++) { const r = ts[k].getBoundingClientRect(); if (y < r.top || (y <= r.bottom && x < r.left + r.width / 2)) return k; }
+      return ts.length;
+    };
+    const overAns = (x, y) => { const r = $('#ans', root).getBoundingClientRect(); return x > r.left - 10 && x < r.right + 10 && y > r.top - 24 && y < r.bottom + 24; };
+    root.addEventListener('pointerdown', e => {
+      const b = e.target.closest('.tile[data-i]');
+      if (!b || L.checked || b.classList.contains('used') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      const i = +b.dataset.i, fromAns = !!b.closest('#ans'), r0 = b.getBoundingClientRect();
+      const st = { x: e.clientX, y: e.clientY, dx: e.clientX - r0.left, dy: e.clientY - r0.top, on: false, float: null, rest: null, idx: -1 };
+      const move = ev => {
+        if (ev.pointerId !== e.pointerId) return;
+        if (!st.on) {
+          if (Math.hypot(ev.clientX - st.x, ev.clientY - st.y) < 8) return;
+          st.on = true;
+          st.rest = chosen.filter(c => c !== i);
+          st.float = b.cloneNode(true); st.float.classList.add('float'); st.float.removeAttribute('data-i');
+          st.float.style.width = r0.width + 'px'; document.body.appendChild(st.float);
+        }
+        ev.preventDefault();
+        st.float.style.left = (ev.clientX - st.dx) + 'px'; st.float.style.top = (ev.clientY - st.dy) + 'px';
+        let idx = -1;
+        if (overAns(ev.clientX, ev.clientY)) { idx = ansIndexAt(ev.clientX, ev.clientY); if (st.idx >= 0 && idx > st.idx) idx--; }
+        if (idx !== st.idx || st.idx === -2) {
+          st.idx = idx;
+          const list = [...st.rest]; if (idx >= 0) list.splice(idx, 0, 'G');
+          draw({ list, i });
+        }
+      };
+      const end = ev => {
+        if (ev.pointerId !== e.pointerId) return;
+        window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', end); window.removeEventListener('pointercancel', end);
+        if (!st.on) return;
+        st.float.remove(); suppress = Date.now() + 350;
+        const cancel = ev.type === 'pointercancel';
+        let next = chosen.slice();
+        if (!cancel) { next = [...st.rest]; if (st.idx >= 0) next.splice(st.idx, 0, i); else if (!fromAns) next = chosen.slice(); }
+        chosen.length = 0; chosen.push(...next);
+        draw(); if (!cancel && st.idx >= 0) buzz(8);
+      };
+      window.addEventListener('pointermove', move, { passive: false }); window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);
     });
     cur.check = () => {
       const text = chosen.map(i => ex.tiles[i]).join(' ');
