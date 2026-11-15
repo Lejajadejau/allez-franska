@@ -1365,7 +1365,10 @@ function playScene(id, lines, onDone) {
     if (tok !== sceneTok) return;
     if (i >= lines.length) { onDone?.(); return; }
     $$('.sc-av').forEach((a, k) => a.classList.toggle('talk', k === i));
-    playNorm(phraseAudio || (phraseAudio = new Audio()), sceneUrl(id, i), { onend: () => setTimeout(() => step(i + 1), 280), onfail: () => setTimeout(() => step(i + 1), 100) });
+    // Om ljudet avbryts utan att säga till (iPhone kan pausa det) går scenen ändå vidare efter en stund
+    let gone = false; const next = ms => { if (gone) return; gone = true; clearTimeout(wd); setTimeout(() => step(i + 1), ms); };
+    const wd = setTimeout(() => next(0), Math.max(5000, String(lines[i]?.fr || '').length * 110) + 4000);
+    playNorm(phraseAudio || (phraseAudio = new Audio()), sceneUrl(id, i), { onend: () => next(280), onfail: () => next(100) });
   };
   step(0);
 }
@@ -1760,17 +1763,24 @@ function storyNext() {
     const btn = row.querySelector('.sline'), txt = row.querySelector('.fr-t');
     const reveal = () => { txt.dataset.rev = '1'; txt.classList.remove('masked'); };
     let t;
-    btn.onclick = () => { if (txt.classList.contains('masked')) reveal(); playLine(st, idx); };
+    // Fortsätt-knappen låses upp när repliken har spelats klart. Avbryts ljudet (t.ex. om man trycker på
+    // en replik under uppspelningen, eller om telefonen pausar ljudet) låses den ändå upp efter en stund.
+    let went = false, wd = 0;
+    const cont = () => {
+      if (went || L?.st !== st || L.i !== idx + 1) return;
+      went = true; clearTimeout(wd);
+      if (un.level === 'A1') reveal();
+      const q = st.qs.find(q => q.at === idx);
+      const nb2 = $('#snext'); if (!nb2) return;
+      if (q) storyQuestion(q); else { nb2.disabled = false; nb2.textContent = L.i < st.lines.length ? 'Fortsätt ▶' : 'Klart ▶'; }
+    };
+    wd = setTimeout(cont, Math.max(5000, ln.fr.length * 110) + 4000);
+    btn.onclick = () => { if (txt.classList.contains('masked')) reveal(); playLine(st, idx, cont); };
     btn.addEventListener('pointerdown', () => { t = setTimeout(() => btn.classList.add('tr'), 400); });
     ['pointerup', 'pointerleave'].forEach(e => btn.addEventListener(e, () => { clearTimeout(t); btn.classList.remove('tr'); }));
     btn.addEventListener('contextmenu', e => e.preventDefault());
     const nb = $('#snext'); nb.disabled = true; nb.textContent = '🔊 …';
-    playLine(st, idx, () => {
-      if (L?.st !== st) return;
-      if (un.level === 'A1') reveal();
-      const q = st.qs.find(q => q.at === idx);
-      if (q) storyQuestion(q); else { nb.disabled = false; nb.textContent = L.i < st.lines.length ? 'Fortsätt ▶' : 'Klart ▶'; }
-    });
+    playLine(st, idx, cont);
     preloadLine(st, idx + 1);
     $('.ltop .pbar i').style.width = Math.round(L.i / st.lines.length * 100) + '%';
     return;
@@ -2608,4 +2618,4 @@ if ('serviceWorker' in navigator) window.addEventListener('load', () => navigato
 boot();
 
 // För test
-window.__psc = { get S() { return S; }, get L() { return L; }, get wa() { return { st: actx?.state, playing: !!curSrc, n: bufCache.size }; }, say: (t, o) => say(t, false, o || {}), get amb() { return ambCur?.id || null; }, get LM() { return LM; }, COURSE, STORIES, renderEx: () => renderEx(), finish: c => finish(c), showStreak: s => showStreak(s), conjCheck: (e, o) => conj(e.vb, e.t, e.i).includes(o), conjAns: e => conj(e.vb, e.t, e.i)[0], startRadio: u => startRadio(u), startEar: () => startEar(), startLesson: (u, l) => startLesson(u, l), get cur() { return cur; }, forceAnswer: ok => { cur.check = () => ({ ok, answer: '' }); cur.ready = true; showFeedback({ ok, answer: '' }); }, next: () => next() };
+window.__psc = { get S() { return S; }, get L() { return L; }, get wa() { return { st: actx?.state, playing: !!curSrc, n: bufCache.size }; }, say: (t, o) => say(t, false, o || {}), get amb() { return ambCur?.id || null; }, get LM() { return LM; }, COURSE, STORIES, renderEx: () => renderEx(), finish: c => finish(c), showStreak: s => showStreak(s), conjCheck: (e, o) => conj(e.vb, e.t, e.i).includes(o), conjAns: e => conj(e.vb, e.t, e.i)[0], startRadio: u => startRadio(u), startEar: () => startEar(), startLesson: (u, l) => startLesson(u, l), startStory: (u, si) => startStory(u, si), get cur() { return cur; }, forceAnswer: ok => { cur.check = () => ({ ok, answer: '' }); cur.ready = true; showFeedback({ ok, answer: '' }); }, next: () => next() };
