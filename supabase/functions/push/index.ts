@@ -108,6 +108,50 @@ Deno.serve(async (req) => {
     return json({ sent });
   }
 
+  // Automatisk kvällspuff kl. 20.30: har kompisen övat i dag men inte du, får du en puff (högst en per dag)
+  if (body.type === 'nudge') {
+    const cronSecret = await secret('cron');
+    if (!cronSecret || req.headers.get('x-cron-secret') !== cronSecret) return json({ error: 'nej' }, 401);
+    const hour = Number(sthlm({ hour: '2-digit', hourCycle: 'h23' }, 'en-GB'));
+    if (hour !== 20 && !body.force) return json({ sent: 0, hour });
+    const today = sthlm({ year: 'numeric', month: '2-digit', day: '2-digit' });
+    const { data: subs } = await sb.from('push_subs').select('user_id');
+    const ids = [...new Set((subs || []).map((s) => s.user_id))];
+    if (!ids.length) return json({ sent: 0 });
+    const { data: profs } = await sb.from('profiles').select('id,name,state').in('id', ids);
+    const buddyIds = [...new Set((profs || []).flatMap((p) => (p.state?.buddies || []).slice(0, 3)))];
+    const { data: buds } = buddyIds.length ? await sb.from('profiles').select('id,name,state').in('id', buddyIds) : { data: [] };
+    const byId = new Map((buds || []).map((b) => [b.id, b]));
+    // Manuella puffar som redan skickats i dag (de senaste 20 timmarna = sedan strax efter midnatt)
+    const since = new Date(Date.now() - 20 * 3600e3).toISOString();
+    const { data: manual } = await sb.from('cheers').select('from_id,to_id').eq('emoji', '👉').gte('created_at', since);
+    const done = new Set((manual || []).map((c) => c.from_id + '>' + c.to_id));
+    let sent = 0;
+    for (const p of profs || []) {
+      const st = p.state || {};
+      if (st.lastActive === today) continue;
+      const waiting: { name: string; n: number }[] = [];
+      for (const fid of (st.buddies || []).slice(0, 3)) {
+        const f = byId.get(fid); const fs = f?.state || {};
+        if (!f || !(fs.buddies || []).includes(p.id) || fs.lastActive !== today || done.has(fid + '>' + p.id)) continue;
+        const A = new Set(st.days || []), B = new Set(fs.days || []);
+        const d = new Date(today + 'T12:00'); d.setDate(d.getDate() - 1);
+        let n = 0;
+        while (n < 400) { const k = d.toISOString().slice(0, 10); if (!(A.has(k) && B.has(k))) break; n++; d.setDate(d.getDate() - 1); }
+        waiting.push({ name: f.name || 'en kompis', n });
+      }
+      if (!waiting.length) continue;
+      const names = waiting.map((w) => w.name).join(' och ');
+      const best = Math.max(...waiting.map((w) => w.n));
+      sent += await sendTo(p.id, {
+        title: `👉 Puff från ${names} – påminnelse om att öva i dag`,
+        body: best > 0 ? `Er kompissvit på ${best} ${best === 1 ? 'dag' : 'dagar'} hänger på dig 🔥 En kort lektion räcker.` : 'Gör en lektion i dag så startar er kompissvit 🔥',
+        url: './',
+      });
+    }
+    return json({ sent, hour });
+  }
+
   if (body.type === 'cron') {
     const cronSecret = await secret('cron');
     if (!cronSecret || req.headers.get('x-cron-secret') !== cronSecret) return json({ error: 'nej' }, 401);

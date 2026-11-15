@@ -80,3 +80,12 @@ create table if not exists public.app_errors (
 alter table public.app_errors enable row level security;
 drop policy if exists "skicka felrapport" on public.app_errors;
 create policy "skicka felrapport" on public.app_errors for insert to anon, authenticated with check (true);
+
+-- Automatisk kvällspuff i kompissviterna: varje halvtimme efter hel timme, funktionen skickar bara kl. 20.30
+select cron.schedule('allez-puffar', '30 * * * *', $$
+  select net.http_post(
+    url := 'https://yspfxxfaokpivyvyvojm.supabase.co/functions/v1/push',
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', (select value from public.app_secrets where name = 'cron')),
+    body := '{"type":"nudge"}'::jsonb
+  );
+$$);
