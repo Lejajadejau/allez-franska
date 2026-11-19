@@ -1361,8 +1361,9 @@ const sceneUrl = (id, i) => { const k = `${id}-${i}`; return `${AUDIO_ROOT}ls/${
 let sceneTok = 0;
 function playScene(id, lines, onDone) {
   const tok = ++sceneTok; stopAudio();
+  const startL = L;
   const step = i => {
-    if (tok !== sceneTok) return;
+    if (tok !== sceneTok || !L || L !== startL) return; // lektionen har avslutats eller bytts
     if (i >= lines.length) { onDone?.(); return; }
     $$('.sc-av').forEach((a, k) => a.classList.toggle('talk', k === i));
     // Om ljudet avbryts utan att säga till (iPhone kan pausa det) går scenen ändå vidare efter en stund
@@ -1476,6 +1477,7 @@ function resumeCard() {
     <button class="btn small primary" id="resumeB">Fortsätt</button><button class="bd-x" id="resumeX" aria-label="Släng">✕</button></div>`;
 }
 function renderEx() {
+  if (!L || !L.queue) return;
   stopRec();
   saveResume();
   { const prev = L.queue[L.i], nx = tilesFirst(prev); if (nx !== prev && prev.lv) nx.lv = prev.lv; L.queue[L.i] = nx; }
@@ -1494,7 +1496,7 @@ function renderEx() {
   EX[ex.type](ex, $('#lbody'));
   $('#check').onclick = onCheck;
 }
-function setReady(r) { cur.ready = r; const b = $('#check'); if (b && !L.checked) b.disabled = !r; }
+function setReady(r) { cur.ready = r; const b = $('#check'); if (b && L && !L.checked) b.disabled = !r; }
 const PRAISE = ['Très bien !', 'Parfait !', 'Bravo !', 'Super !', 'Excellent !', 'Magnifique !'];
 function onCheck() {
   if (!L || L.over || L.kind === 'story' || L.kind === 'role') return;
@@ -1505,6 +1507,7 @@ function onCheck() {
   showFeedback(r);
 }
 function showFeedback(r) {
+  if (!L || !L.queue) return;
   L.checked = true;
   const ex = L.queue[L.i];
   chime(r.ok, r.ok ? L.combo + 1 : 0);
@@ -1539,6 +1542,7 @@ function showFeedback(r) {
   if (L.kind === 'test' && L.lives < 0) { L.over = true; btn.disabled = true; setTimeout(() => finish(false), 700); return; }
 }
 function next() {
+  if (!L || !L.queue) return;
   speechSynthesis?.cancel();
   L.i++;
   if (L.kind === 'place' && L.i >= L.queue.length) { placeBlockDone(); return; }
