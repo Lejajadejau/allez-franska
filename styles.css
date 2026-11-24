@@ -1,6 +1,6 @@
 :root {
   /* Vassare barnbok: samma bläckpenna i gränssnittet som i bilderna, klarare färger */
-  --cream: #f7efdd; --paper: #fffbf2; --ink: #2e211e; --ink2: #66524b; --line: #e3d3b4;
+  --cream: #cde3ee; --paper: #ffffff; --ink: #2e211e; --ink2: #5f5049; --line: #c5d6e0;
   --edge: #2e211e;          /* bläcklinjen runt knappar och kort, samma som i illustrationerna */
   --blue: #24557f; --blue-d: #173a59; --blue-tint: #dde9f3;
   --red: #c23b22; --green: #5e8f45; --green-d: #3f6a2c;
@@ -781,3 +781,39 @@ textarea:focus, input:focus, .verb-inp:focus { border-color: var(--blue); box-sh
 .res-c.g small { background: var(--green-d); }
 .lfoot.ok .btn { background: var(--green-d); }
 .stat.lit b, .combo { color: #b9520e; }
+/* "Nästa steg"-kortet behåller kvartersfärgen i vänsterkanten */
+.nextcard { border-left-color: var(--uc, var(--blue)); }
+
+/* ==========================================================================
+   Färgsättning: Hamn
+   Hamnblå ram (topp, meny och lektionernas överkant), ljusblå bakgrund som
+   himmel och hav, vita kort och starkare färg på kvarterens stigar.
+   ========================================================================== */
+body { background-color: var(--cream); background-image: radial-gradient(rgba(23, 58, 89, .13) 1px, transparent 1px); }
+.top { background: var(--blue); border-bottom: 2px solid var(--edge); backdrop-filter: none; }
+.top .brand { color: #fff; }
+.top .stat b, .top .stat.hearts b { color: #fff; }
+.top .stat.lit b { color: var(--butter); }
+.nav { background: var(--blue); border-top: 2px solid var(--edge); }
+.nav-b { color: rgba(255, 255, 255, .9); }
+.nav-b.on { background: var(--butter); color: var(--ink); outline: 2px solid var(--edge); }
+.pbar { background: #d3e3ec; }
+.path { background-color: color-mix(in srgb, var(--uc) 30%, #fffaf0); }
+.unit.locked .path { background-color: #e4ebef; }
+.node { background: #e3e8ec; box-shadow: 0 7px 0 #b8c4cc; }
+.node .lk { border-color: #c2ccd3; }
+.story-row:has(.locked) .story-lbl { color: #8796a0; }
+.banner-t { background: linear-gradient(transparent, rgba(255, 255, 255, .95) 55%); }
+.lesson { background: #eef6fa; }
+.lfoot { background: #fff; }
+.lfoot.ok { background: var(--ok-bg); }
+.lfoot.bad { background: var(--bad-bg); }
+.ltop { background: var(--blue); border-bottom: 2px solid var(--edge); padding-bottom: 12px; }
+.ltop .x, .ltop .lh { color: #fff; }
+.ltop .pbar { background: rgba(255, 255, 255, .28); box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .18); }
+.lbody { padding-top: 16px; }
+.tile.used { background: #dce8ef; border-color: #dce8ef; }
+@media (min-width: 600px) { .lesson { border-left: 2px solid var(--edge); border-right: 2px solid var(--edge); } }
+/* Knappar i den blå lektionsranden */
+.ltop .txt-t { background: rgba(255, 255, 255, .14); color: #fff; border-color: rgba(255, 255, 255, .75); }
+.ltop .txt-t.on { background: #fff; color: var(--blue-d); border-color: #fff; }
