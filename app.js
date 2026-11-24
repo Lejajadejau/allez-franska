@@ -114,7 +114,10 @@ const fx = {
   tick: () => tones([1760], { type: 'square', vol: 0.025, len: 0.04 }),
   streak: big => { tones(big ? [392, 523, 659, 784, 1047, [1047, 1319, 1568]] : [440, 554, 659, [880, 1109]], { gap: 0.1, len: 0.5, vol: 0.17 }); buzz(big ? [30, 50, 30, 50, 30, 50, 150] : [30, 60, 100]); },
   crown: () => tones([1568, 2093], { type: 'sine', gap: 0.07, len: 0.3, vol: 0.1 }),
+  combo: () => tones([784, 988, 1175, 1568], { type: 'sine', gap: 0.06, len: 0.25, vol: 0.11 }),
 };
+// Gnistor runt en bock eller en lektionsknapp
+const burstHtml = () => `<b class="burst" aria-hidden="true">${'<i></i>'.repeat(8)}</b>`;
 // Räknar upp en siffra
 function countUp(el, to, ms = 900, prefix = '+') {
   if (!el) return; const t0 = performance.now(); let last = -1;
@@ -560,6 +563,7 @@ async function fetchCheers(unseenOnly = true) {
 
 // ================= Ramverk för vyer =================
 let view = 'home';
+let justDone = null; // lektion som just blev klar – firas på kartan
 function toast(msg) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
   document.body.appendChild(t); setTimeout(() => t.classList.add('show'), 10);
@@ -704,7 +708,7 @@ function renderHome() {
       html += deco(off);
       html += `<div class="node-row" data-off="${off}" style="transform:translateX(${off}px)">
         ${isCur ? `<div class="start-tip">Börja!</div>` : ''}
-        <button class="node ${open ? 'open' : 'locked'} ${c >= 1 ? 'done' : ''} ${c >= 3 ? 'gold' : ''} ${isCur ? 'cur' : ''}" data-u="${u}" data-l="${l}" aria-label="${esc(le.title)}${!open ? ' (låst)' : ''}"><span class="ic">${icon}</span>${!open ? '<span class="lk">🔒</span>' : ''}</button>
+        <button class="node ${open ? 'open' : 'locked'} ${c >= 1 ? 'done' : ''} ${c >= 3 ? 'gold' : ''} ${isCur ? 'cur' : ''} ${justDone === le.id ? 'just' : ''}" data-u="${u}" data-l="${l}" aria-label="${esc(le.title)}${!open ? ' (låst)' : ''}"><span class="ic">${icon}</span>${!open ? '<span class="lk">🔒</span>' : ''}${justDone === le.id ? burstHtml() : ''}</button>
         ${c ? `<div class="crowns">${'♛'.repeat(c)}</div>` : ''}
       </div>`;
       if (l === 1) html += `<div class="char-side ${off > 0 ? 'left' : 'right'}">${ART.character(un.character)}<span>${un.charName}</span></div>`;
@@ -752,6 +756,7 @@ function renderHome() {
   drawRoads();
   watchAmbience();
   fillBuddyCard();
+  if (justDone) { justDone = null; const j = $('.node.just'); if (j) { renderHome.scrolled = true; setTimeout(() => { j.scrollIntoView({ block: 'center' }); setTimeout(fx.crown, 500); }, 120); } }
   const curEl = $('.node.cur'); if (curEl && !renderHome.scrolled) { renderHome.scrolled = true; setTimeout(() => curEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 150); }
 
   if (!S.welcomed) welcome();
@@ -1526,17 +1531,27 @@ function showFeedback(r) {
     if (oneTry) L.done++;
   }
   const nc = $('.npc-c'); if (nc) { nc.innerHTML = ART.character(COURSE[ex.u ?? 0].character, r.ok ? 'happy' : 'think'); nc.classList.remove('hop'); void nc.offsetWidth; if (r.ok) nc.classList.add('hop'); }
-  const fb = $('#fb'), foot = $('#lfoot');
+  const fb = $('#fb'), foot = $('#lfoot'), body = $('#lbody');
   foot.classList.add(r.ok ? 'ok' : 'bad');
+  if (body) body.classList.add(r.ok ? 'is-ok' : 'is-bad');
+  const milestone = r.ok && L.combo >= 5 && L.combo % 5 === 0;
   const ansFr = r.say || (ex.s ? ex.s.fr : null);
   fb.innerHTML = r.ok
-    ? `<div class="fb-t">✓ ${rnd(PRAISE)}</div>${r.note ? `<div class="fb-n">${esc(r.note)}</div>` : ''}${r.meaning ? `<div class="fb-n">Betydelse: ${esc(r.meaning)}</div>` : ''}`
-    : `<div class="fb-t">✗ Rätt svar:</div><div class="fb-a">${esc(r.answer || '')}</div>${r.meaning ? `<div class="fb-n">Betydelse: ${esc(r.meaning)}</div>` : ''}`;
+    ? `<div class="fb-t"><span class="fb-ic">✓${burstHtml()}</span>${milestone ? `${L.combo} i rad – ${rnd(PRAISE)}` : rnd(PRAISE)}</div>${r.note ? `<div class="fb-n">${esc(r.note)}</div>` : ''}${r.meaning ? `<div class="fb-n">Betydelse: ${esc(r.meaning)}</div>` : ''}`
+    : `<div class="fb-t"><span class="fb-ic">✗</span>Rätt svar:</div><div class="fb-a">${esc(r.answer || '')}</div>${r.meaning ? `<div class="fb-n">Betydelse: ${esc(r.meaning)}</div>` : ''}`;
   if (r.diff) fb.insertAdjacentHTML('beforeend', `<div class="fb-d">${r.diff}</div>`);
   if (ansFr && ex.type !== 'match' && ex.type !== 'dialogue') { const b = document.createElement('button'); b.className = 'say-b sm'; b.textContent = '🔊'; b.onclick = () => say(ansFr); fb.querySelector('.fb-t').append(b); }
   const btn = $('#check'); btn.disabled = false; btn.textContent = 'Fortsätt'; btn.focus();
   $('.ltop .lh').outerHTML = livesHtml();
+  if (!r.ok && L.kind === 'lesson' && !r.self) $('.ltop .lh')?.classList.add('lost');
+  const pb = $('.ltop .pbar');
+  pb.classList.toggle('hot', L.combo >= 5 && L.combo < 10); pb.classList.toggle('hot2', L.combo >= 10);
+  if (r.ok) { pb.classList.remove('shine'); void pb.offsetWidth; pb.classList.add('shine'); }
   $('.ltop .pbar i').style.width = Math.round(L.done / L.total * 100) + '%';
+  if (milestone) {
+    const c = document.createElement('div'); c.className = 'combo-pop'; c.setAttribute('role', 'status'); c.textContent = `🔥 ${L.combo} i rad!`;
+    $('.lesson').appendChild(c); setTimeout(() => c.remove(), 1700); setTimeout(fx.combo, 260);
+  }
   save(false);
   if (L.kind === 'lesson' && S.hearts <= 0 && !r.ok) { L.over = true; clearResume(); btn.disabled = true; setTimeout(outOfHearts, 700); return; }
   if (L.kind === 'test' && L.lives < 0) { L.over = true; btn.disabled = true; setTimeout(() => finish(false), 700); return; }
@@ -1568,7 +1583,7 @@ function finish(completed) {
   const acc = Math.round(100 * Math.max(0, L.total - L.mistakes) / L.total);
   let xp = 0, ecus = 0, title = '', extra = '', mood = 'happy', char = 'brioche';
   if (L.kind === 'lesson') {
-    const le = lessonAt(L.u, L.l); char = COURSE[L.u].character;
+    const le = lessonAt(L.u, L.l); char = COURSE[L.u].character; justDone = le.id;
     S.crowns[le.id] = Math.min(3, crownsOf(le.id) + 1);
     xp = 10 + (L.mistakes === 0 ? 5 : 0); ecus = 5 + (L.mistakes === 0 ? 5 : 0);
     S.lessonsDone++; if (L.mistakes === 0) S.perfect++;
