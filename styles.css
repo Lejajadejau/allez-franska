@@ -306,7 +306,7 @@ textarea:focus, input:focus { outline: none; border-color: #8db3d4; }
 @keyframes pulse { 50% { transform: scale(.98); } }
 .heard { text-align: center; min-height: 1.2em; }
 .link { display: block; margin: 8px auto 0; color: var(--ink2); font-weight: 700; text-decoration: underline; }
-.dlg { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 6px; max-height: 42dvh; overflow: auto; padding: 4px; }
+.dlg { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 6px; padding: 4px; }
 .dl { display: flex; align-items: flex-end; gap: 6px; }
 .dl.you { justify-content: flex-end; }
 .dl-av { width: 40px; flex: none; }
