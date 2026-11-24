@@ -209,12 +209,15 @@ function playNorm(el, url, { rate = 1, onend, onfail } = {}) {
 }
 function preloadUrl(url) { if (waReady(1)) loadBuf(url).catch(() => { }); }
 // Web Audio måste startas av ett tryck
-document.addEventListener('pointerdown', () => {
+// På iPhone räknas bara slutet av ett tryck (touchend/click) som en riktig användarhandling för ljud,
+// så ljudet väcks både när fingret sätts ned och när det lyfts.
+function audioGesture() {
   checkAudio();
   const c = AUDIO_ROOT ? audioCtx() : null; if (!c) return;
   if (c.state !== 'running') c.resume?.().catch(() => { });
-  if (!c.__unlocked) { c.__unlocked = true; try { const s = c.createBufferSource(); s.buffer = c.createBuffer(1, 1, 22050); s.connect(c.destination); s.start(0); } catch { } }
-}, true);
+  if (!c.__unlocked || c.state !== 'running') { c.__unlocked = true; try { const s = c.createBufferSource(); s.buffer = c.createBuffer(1, 1, 22050); s.connect(c.destination); s.start(0); } catch { } }
+}
+['pointerdown', 'touchend', 'click'].forEach(ev => document.addEventListener(ev, audioGesture, true));
 // Lås upp ljudet vid första trycket så att iPhone tillåter automatisk uppspelning efteråt
 document.addEventListener('pointerdown', function unlockAudio() {
   document.removeEventListener('pointerdown', unlockAudio, true);
@@ -2302,8 +2305,14 @@ setInterval(() => {
   if (t !== ambLast) { ambLast = t; ambCur.gain.gain.setTargetAtTime(t, actx.currentTime, t < AMB_VOL ? 0.08 : 0.5); }
 }, 150);
 document.addEventListener('pointerdown', () => { const c = actx; if (c && c.state === 'suspended') c.resume().catch(() => { }); }, { passive: true });
+// iPhone: när man har lämnat appen kan ljudet påstå att det fungerar men ändå vara tyst.
+// Har appen legat i bakgrunden byggs ljudet därför alltid om vid nästa tryck.
+let hiddenAt = 0;
+window.addEventListener('pageshow', e => { if (e.persisted) audioStale = true; });
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && actx) { const c = actx; if (c.state !== 'running') c.resume?.().catch(() => { }); setTimeout(() => { if (c === actx && c.state !== 'running') audioStale = true; }, 600); }
+  if (document.hidden) hiddenAt = Date.now();
+  else if (actx && hiddenAt && Date.now() - hiddenAt > 800) audioStale = true;
+  if (!document.hidden && actx && !audioStale) { const c = actx; if (c.state !== 'running') c.resume?.().catch(() => { }); setTimeout(() => { if (c === actx && c.state !== 'running') audioStale = true; }, 600); }
   if (document.hidden) { const w = ambWant; setAmbience(null); ambWant = w; }
   else if (ambWant && !LM) { const w = ambWant; ambWant = null; setAmbience(w); }
   if (!document.hidden && LM?.playing) lockWake(true);
