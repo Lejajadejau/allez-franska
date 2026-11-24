@@ -18,6 +18,7 @@ const EPS = SEASONS.flatMap((se, si) => se.eps.map(e => (e.season = si, e)));
 const epNo = ep => SEASONS[ep.season].eps.indexOf(ep) + 1;
 import { SV } from './svmap.js';
 import { VERBS, TENSES, PERSONS, conj, shown, pron } from './verbs.js';
+import { SFX } from './sfx.js';
 
 // ================= Hjälpfunktioner =================
 const $ = (s, r = document) => r.querySelector(s);
@@ -81,40 +82,29 @@ function diffHtml(input, answer) {
 
 // ================= Ljud och tal =================
 let actx;
-// Syntljud: små toner byggda i Web Audio (inga ljudfiler)
-function tones(notes, { type = 'triangle', vol = 0.16, len = 0.28, gap = 0.11 } = {}) {
+// Ljudeffekter: syntetiserade i Web Audio (inga ljudfiler), se sfx.js
+function sfx(name, ...args) {
   if (!S?.sound) return;
   try {
-    if (!audioCtx()) return;
-    if (actx.state !== 'running') actx.resume?.();
-    notes.forEach((f, i) => {
-      if (!f) return;
-      const fs = Array.isArray(f) ? f : [f];
-      fs.forEach(fr => {
-        const o = actx.createOscillator(), g = actx.createGain(), t0 = actx.currentTime + i * gap;
-        o.type = type; o.frequency.value = fr;
-        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol / fs.length, t0 + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
-        o.connect(g).connect(actx.destination); o.start(t0); o.stop(t0 + len + 0.02);
-      });
-    });
+    const c = audioCtx(); if (!c) return;
+    if (c.state !== 'running') c.resume?.();
+    SFX[name](c, c.currentTime + 0.01, ...args);
   } catch { }
 }
-const semi = (f, n) => f * Math.pow(2, n / 12);
 // Rätt/fel. Rätt svar i rad höjer tonen ett halvt tonsteg i taget.
 function chime(ok, combo = 0) {
-  if (ok) { const k = Math.min(Math.max(0, combo - 1), 9); tones([semi(659, k), semi(988, k)]); buzz(combo >= 5 && combo % 5 === 0 ? [15, 40, 15, 40, 30] : 15); }
-  else { tones([196, 165], { type: 'sawtooth', vol: 0.05 }); buzz([60, 50, 60]); }
+  if (ok) { sfx('correct', combo); buzz(combo >= 5 && combo % 5 === 0 ? [15, 40, 15, 40, 30] : 15); }
+  else { sfx('wrong'); buzz([60, 50, 60]); }
 }
 // Vibration (Android; iPhone tillåter det inte i webbappar)
 function buzz(pattern) { if (S?.haptic === false) return; try { navigator.vibrate?.(pattern); } catch { } }
 const fx = {
-  fanfare: () => { tones([523, 659, 784, [1047, 784, 659]], { gap: 0.12, len: 0.45, vol: 0.18 }); buzz([20, 60, 20, 60, 80]); },
-  perfect: () => { tones([1319, 1568, 2093], { type: 'sine', gap: 0.08, len: 0.35, vol: 0.12 }); buzz([10, 30, 10]); },
-  tick: () => tones([1760], { type: 'square', vol: 0.025, len: 0.04 }),
-  streak: big => { tones(big ? [392, 523, 659, 784, 1047, [1047, 1319, 1568]] : [440, 554, 659, [880, 1109]], { gap: 0.1, len: 0.5, vol: 0.17 }); buzz(big ? [30, 50, 30, 50, 30, 50, 150] : [30, 60, 100]); },
-  crown: () => tones([1568, 2093], { type: 'sine', gap: 0.07, len: 0.3, vol: 0.1 }),
-  combo: () => tones([784, 988, 1175, 1568], { type: 'sine', gap: 0.06, len: 0.25, vol: 0.11 }),
+  fanfare: () => { sfx('fanfare'); buzz([20, 60, 20, 60, 80]); },
+  perfect: () => { sfx('perfect'); buzz([10, 30, 10]); },
+  tick: () => sfx('tick'),
+  streak: big => { sfx('streak', big); buzz(big ? [30, 50, 30, 50, 30, 50, 150] : [30, 60, 100]); },
+  crown: () => sfx('crown'),
+  combo: () => sfx('combo'),
 };
 // Gnistor runt en bock eller en lektionsknapp
 const burstHtml = () => `<b class="burst" aria-hidden="true">${'<i></i>'.repeat(8)}</b>`;
