@@ -9,7 +9,10 @@ import { SERIAL3 } from './serial3.js';
 import { SCENES1 } from './listen1.js';
 import { SCENES2 } from './listen2.js';
 import { SCENES3 } from './listen3.js';
-import { SCENESB } from './listen4.js';
+import { SCENESB as SCENESB1 } from './listen4.js';
+import { SCENESB2 } from './listen6.js';
+import { RADIO2 } from './radio2.js';
+const SCENESB = { ...SCENESB1, ...SCENESB2 };
 import { SCENES5 } from './listen5.js';
 import { RADIO, PAIRS } from './radio.js';
 const SCENES = { ...SCENES1, ...SCENES2, ...SCENES3, ...SCENES5 };
@@ -718,6 +721,11 @@ function renderHome() {
       const rOpen = unitDone(u), rDone = (S.radio || {})[un.id];
       html += `<div class="node-row story-row"><button class="node story radio ${rOpen ? 'open' : 'locked'} ${rDone ? 'done' : ''}" data-radio="${u}" aria-label="Radio: ${esc(RADIO[un.id].title)}"><span class="ic">📻</span>${!rOpen ? '<span class="lk">🔒</span>' : ''}</button>
         <div class="story-lbl">${rDone ? '✓ ' : ''}Radio</div></div>`;
+      if (RADIO2[un.id]) {
+        const r2Done = (S.radio || {})[un.id + '-2'];
+        html += `<div class="node-row story-row"><button class="node story radio ${rOpen ? 'open' : 'locked'} ${r2Done ? 'done' : ''}" data-radio="${u}:2" aria-label="Radio: ${esc(RADIO2[un.id].title)}"><span class="ic">📻</span>${!rOpen ? '<span class="lk">🔒</span>' : ''}</button>
+          <div class="story-lbl">${r2Done ? '✓ ' : ''}Radio 2</div></div>`;
+      }
     }
     html += `</div></section>${ART.tramDivider()}`;
   });
@@ -729,7 +737,7 @@ function renderHome() {
   shell(html);
 
   $$('.node:not(.story)').forEach(n => n.onclick = () => nodeSheet(+n.dataset.u, +n.dataset.l));
-  $$('[data-radio]').forEach(n => n.onclick = () => radioSheet(+n.dataset.radio));
+  $$('[data-radio]').forEach(n => n.onclick = () => { const [u, k] = n.dataset.radio.split(':'); radioSheet(+u, +(k || 1)); });
   $$('.node.story:not(.radio)').forEach(n => n.onclick = () => { const [u, si] = n.dataset.story.split(':').map(Number); storySheet(u, si); });
   $$('[data-guide]').forEach(b => b.onclick = () => guide(+b.dataset.guide));
   const mc = $('.mapcard'); if (mc) mc.ontoggle = () => { S.mapOpen = mc.open; save(false); };
@@ -1373,17 +1381,17 @@ function playScene(id, lines, onDone) {
 }
 const sceneWho = (w, u) => w === 'c' ? COURSE[u].character : null;
 const sceneIcon = w => ({ n: '🎙️', f: '👩', m: '👨', l: '👧', u: '👦', h: '📻', w: '🌦️', ad: '📣' })[w] || '🗣️';
-function radioSheet(u) {
-  const un = COURSE[u], r = RADIO[un.id];
+function radioSheet(u, n = 1) {
+  const un = COURSE[u], r = (n === 2 ? RADIO2 : RADIO)[un.id];
   if (!unitDone(u)) { sheet(`<div class="big-emoji">📻</div><h2>Radio Port-Saint-Clément</h2><p>Programmet om ${esc(un.fr)} sänds när du har klarat alla lektioner i kvarteret.</p><button class="btn primary" data-close>OK</button>`); return; }
   sheet(`<div class="big-emoji">📻</div><h2>${esc(r.title)}</h2><p class="muted">Radio Port-Saint-Clément · ${esc(un.fr)}. Lyssna på programmet och svara på tre frågor. Texten visas efteråt.</p>
     <button class="btn primary" id="rgo">▶ Slå på radion</button><button class="btn ghost" data-close>Stäng</button>`,
-    (w, close) => $('#rgo', w).onclick = () => { close(); startRadio(u); });
+    (w, close) => $('#rgo', w).onclick = () => { close(); startRadio(u, n); });
 }
-function startRadio(u) {
-  const un = COURSE[u], r = RADIO[un.id], id = 'r-' + un.id;
-  const sc = { lines: r.lines, ic: '📻', radio: true };
-  startSession({ kind: 'practice', radio: un.id, u, queue: r.qs.map((q, qi) => ({ type: 'scene', id, sc: { ...sc, q }, u, qi, last: qi === r.qs.length - 1 })) });
+function startRadio(u, n = 1) {
+  const un = COURSE[u], r = (n === 2 ? RADIO2 : RADIO)[un.id], id = (n === 2 ? 'r2-' : 'r-') + un.id;
+  const sc = { lines: r.lines, ic: '📻', radio: n === 2 ? un.id + '-2' : true, nq: r.qs.length };
+  startSession({ kind: 'practice', radio: n === 2 ? un.id + '-2' : un.id, u, queue: r.qs.map((q, qi) => ({ type: 'scene', id, sc: { ...sc, q }, u, qi, last: qi === r.qs.length - 1 })) });
 }
 function startEar() {
   const done = doneLessons();
@@ -2039,7 +2047,7 @@ const EX = {
     const sc = ex.sc, q = sc.q, lvlA = COURSE[ex.u].level.startsWith('A');
     const opts = ex.opts || (ex.opts = shuffle(q.o.map((o, i) => [o, i])));
     const avs = sc.lines.map(([w]) => { const ch = sceneWho(w, ex.u); return `<span class="sc-av">${ch ? ART.character(ch) : `<b>${sceneIcon(w)}</b>`}</span>`; }).join('');
-    root.innerHTML = `<p class="kind">${sc.radio ? `📻 Radio · fråga ${ex.qi + 1} av ${sc.radio ? RADIO[COURSE[ex.u].id].qs.length : 1}` : `${sc.ic || '🎧'} Lyssna och svara`}</p>
+    root.innerHTML = `<p class="kind">${sc.radio ? `📻 Radio · fråga ${ex.qi + 1} av ${sc.nq || RADIO[COURSE[ex.u].id].qs.length}` : `${sc.ic || '🎧'} Lyssna och svara`}</p>
       <div class="sc-box"><div class="sc-avs">${avs}</div><button class="btn sc-play" id="scPlay">🔊 Lyssna ${ex.played ? 'igen' : ''}</button>
       <p class="muted small">${lvlA ? 'Lyssna på hela scenen. Texten visas när du har svarat.' : 'Écoutez la scène. Le texte apparaîtra après votre réponse.'}</p></div>
       <h2 class="q">${esc(q.q)}</h2>
@@ -2636,4 +2644,4 @@ if ('serviceWorker' in navigator) window.addEventListener('load', () => navigato
 boot();
 
 // För test
-window.__psc = { get S() { return S; }, get L() { return L; }, get wa() { return { st: actx?.state, playing: !!curSrc, n: bufCache.size }; }, say: (t, o) => say(t, false, o || {}), get amb() { return ambCur?.id || null; }, get LM() { return LM; }, COURSE, STORIES, renderEx: () => renderEx(), finish: c => finish(c), showStreak: s => showStreak(s), conjCheck: (e, o) => conj(e.vb, e.t, e.i).includes(o), conjAns: e => conj(e.vb, e.t, e.i)[0], startRadio: u => startRadio(u), startEar: () => startEar(), startLesson: (u, l) => startLesson(u, l), startStory: (u, si) => startStory(u, si), get cur() { return cur; }, forceAnswer: ok => { cur.check = () => ({ ok, answer: '' }); cur.ready = true; showFeedback({ ok, answer: '' }); }, next: () => next() };
+window.__psc = { get S() { return S; }, get L() { return L; }, get wa() { return { st: actx?.state, playing: !!curSrc, n: bufCache.size }; }, say: (t, o) => say(t, false, o || {}), get amb() { return ambCur?.id || null; }, get LM() { return LM; }, COURSE, STORIES, renderEx: () => renderEx(), finish: c => finish(c), showStreak: s => showStreak(s), conjCheck: (e, o) => conj(e.vb, e.t, e.i).includes(o), conjAns: e => conj(e.vb, e.t, e.i)[0], startRadio: (u, n) => startRadio(u, n), startEar: () => startEar(), startLesson: (u, l) => startLesson(u, l), startStory: (u, si) => startStory(u, si), get cur() { return cur; }, forceAnswer: ok => { cur.check = () => ({ ok, answer: '' }); cur.ready = true; showFeedback({ ok, answer: '' }); }, next: () => next() };
