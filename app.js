@@ -1483,6 +1483,7 @@ function resumeCard() {
     <button class="btn small primary" id="resumeB">Fortsätt</button><button class="bd-x" id="resumeX" aria-label="Släng">✕</button></div>`;
 }
 function renderEx() {
+  $$('.tile.float').forEach(f => f.remove()); // en kvarglömd dragbricka får aldrig ligga kvar
   if (!L || !L.queue) return;
   stopRec();
   saveResume();
@@ -1996,9 +1997,12 @@ const EX = {
           draw({ list, i });
         }
       };
+      let ended = false;
       const end = ev => {
-        if (ev.pointerId !== e.pointerId) return;
+        if (ended || (ev.pointerId !== undefined && ev.pointerId !== e.pointerId)) return;
+        ended = true;
         window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', end); window.removeEventListener('pointercancel', end);
+        document.removeEventListener('touchend', tEnd, true); document.removeEventListener('touchcancel', tEnd, true);
         if (!st.on) return;
         st.float.remove(); suppress = Date.now() + 350;
         const cancel = ev.type === 'pointercancel';
@@ -2007,7 +2011,10 @@ const EX = {
         chosen.length = 0; chosen.push(...next);
         draw(); if (!cancel && st.idx >= 0) buzz(8);
       };
+      // iPhone skickar ibland inte pointerup när brickan som drogs har ritats om – då avslutas draget när fingret lyfts
+      const tEnd = ev => end({ type: ev.type === 'touchcancel' ? 'pointercancel' : 'pointerup' });
       window.addEventListener('pointermove', move, { passive: false }); window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);
+      document.addEventListener('touchend', tEnd, true); document.addEventListener('touchcancel', tEnd, true);
     });
     cur.check = () => {
       const text = chosen.map(i => ex.tiles[i]).join(' ');
